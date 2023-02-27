@@ -1,33 +1,27 @@
+//!
 
-
-use holaplex_rust_boilerplate_api::{
-    db::{Connection, DbArgs},
-    graphql::schema::build_schema,
-    handlers::{graphql_handler, playground},
-    AppState,
+use async_std::stream::StreamExt;
+use holaplex_hub_webhooks::{
+    build_schema,
+    db::Connection,
+    events,
+    handlers::{graphql_handler, health, playground},
+    AppState, Args, Services,
 };
-use hub_core::{clap, prelude::*};
-use poem::{
-    get, listener::TcpListener, middleware::AddData, post, EndpointExt, Route, Server,
+use hub_core::{
+    anyhow::Context as AnyhowContext,
+    tokio::{self, task},
+    tracing::{info, warn},
 };
-
-#[derive(Debug, clap::Args)]
-#[command(version, author, about)]
-pub struct Args {
-    #[arg(short, long, env, default_value_t = 3002)]
-    pub port: u16,
-
-    #[command(flatten)]
-    pub db: DbArgs,
-}
+use poem::{get, listener::TcpListener, middleware::AddData, post, EndpointExt, Route, Server};
 
 pub fn main() {
     let opts = hub_core::StartConfig {
-        service_name: "hub-boilerplate-rust",
+        service_name: "hub-webhooks",
     };
 
     hub_core::run(opts, |common, args| {
-        let Args { port, db } = args;
+        let Args { port, db, svix } = args;
 
         common.rt.block_on(async move {
             let connection = Connection::new(db)
@@ -35,20 +29,46 @@ pub fn main() {
                 .context("failed to get database connection")?;
 
             let schema = build_schema();
+            let svix_client = svix.build_client().await?;
 
-            let state = AppState::new(schema, connection);
+            let state = AppState::new(schema, connection.clone(), svix_client.clone());
+
+            let cons = common.consumer_cfg.build::<Services>().await?;
+
+            tokio::spawn(async move {
+                {
+                    let mut stream = cons.stream();
+                    loop {
+                        let connection = connection.clone();
+                        let svix_client = svix_client.clone();
+
+                        match stream.next().await {
+                            Some(Ok(msg)) => {
+                                info!(?msg, "message received");
+
+                                tokio::spawn(async move {
+                                    events::process(msg, connection.clone(), svix_client).await
+                                });
+                                task::yield_now().await;
+                            },
+                            None => (),
+                            Some(Err(e)) => {
+                                warn!("failed to get message {:?}", e);
+                            },
+                        }
+                    }
+                }
+            });
 
             Server::new(TcpListener::bind(format!("0.0.0.0:{port}")))
                 .run(
                     Route::new()
-                        .at(
-                            "/graphql",
-                            post(graphql_handler).with(AddData::new(state.clone())),
-                        )
-                        .at("/playground", get(playground)),
+                        .at("/graphql", post(graphql_handler).with(AddData::new(state)))
+                        .at("/playground", get(playground))
+                        .at("/health", get(health)),
                 )
                 .await
-                .map_err(Into::into)
+                .context("failed to build graphql server")
         })
     });
 }
