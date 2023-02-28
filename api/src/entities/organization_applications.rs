@@ -7,6 +7,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub svix_app_id: String,
+    #[sea_orm(unique)]
     pub organization_id: Uuid,
     pub created_at: DateTime,
 }

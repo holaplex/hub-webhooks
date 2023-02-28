@@ -20,7 +20,8 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(OrganizationApplications::OrganizationId)
                             .uuid()
-                            .not_null(),
+                            .not_null()
+                            .unique_key(),
                     )
                     .col(
                         ColumnDef::new(OrganizationApplications::CreatedAt)
@@ -56,7 +57,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-enum OrganizationApplications {
+pub enum OrganizationApplications {
     Table,
     SvixAppId,
     OrganizationId,

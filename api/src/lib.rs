@@ -31,15 +31,17 @@ use svix::api::Svix;
 #[allow(clippy::pedantic)]
 pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/organization.proto.rs"));
+    include!(concat!(env!("OUT_DIR"), "/customer.proto.rs"));
 }
 
 #[derive(Debug)]
 pub enum Services {
     Organizations(proto::OrganizationEventKey, proto::OrganizationEvents),
+    Customers(proto::CustomerEventKey, proto::CustomerEvents),
 }
 
 impl hub_core::consumer::MessageGroup for Services {
-    const REQUESTED_TOPICS: &'static [&'static str] = &["hub-orgs"];
+    const REQUESTED_TOPICS: &'static [&'static str] = &["hub-orgs", "hub-customers"];
 
     fn from_message<M: hub_core::consumer::Message>(msg: &M) -> Result<Self, RecvError> {
         let topic = msg.topic();
@@ -53,6 +55,12 @@ impl hub_core::consumer::MessageGroup for Services {
                 let val = proto::OrganizationEvents::decode(val)?;
 
                 Ok(Services::Organizations(key, val))
+            },
+            "hub-customers" => {
+                let key = proto::CustomerEventKey::decode(key)?;
+                let val = proto::CustomerEvents::decode(val)?;
+
+                Ok(Services::Customers(key, val))
             },
             t => Err(RecvError::BadTopic(t.into())),
         }

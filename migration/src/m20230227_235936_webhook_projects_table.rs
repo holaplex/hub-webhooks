@@ -1,6 +1,6 @@
 use sea_orm_migration::prelude::*;
 
-use crate::m20230124_165007_webhooks_table::Webhooks;
+use crate::m20230227_235932_webhooks_table::Webhooks;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 

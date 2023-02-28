@@ -1,5 +1,7 @@
 use sea_orm_migration::prelude::*;
 
+use crate::m20230227_235925_organization_applications_table::OrganizationApplications;
+
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -28,6 +30,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Webhooks::UpdatedAt).timestamp())
                     .col(ColumnDef::new(Webhooks::CreatedBy).uuid().not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-webhooks-organization_id")
+                            .from(Webhooks::Table, Webhooks::OrganizationId)
+                            .to(
+                                OrganizationApplications::Table,
+                                OrganizationApplications::OrganizationId,
+                            )
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
                     .to_owned(),
             )
             .await?;
