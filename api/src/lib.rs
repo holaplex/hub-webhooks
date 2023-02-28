@@ -79,7 +79,7 @@ impl hub_core::consumer::MessageGroup for Services {
 #[derive(Debug, clap::Args)]
 #[command(version, author, about)]
 pub struct Args {
-    #[arg(short, long, env, default_value_t = 3003)]
+    #[arg(short, long, env, default_value_t = 3008)]
     pub port: u16,
 
     #[command(flatten)]
@@ -141,6 +141,7 @@ pub struct AppContext {
 }
 
 impl AppContext {
+    #[must_use]
     pub fn new(db: Connection, user_id: Option<Uuid>) -> Self {
         Self { db, user_id }
     }

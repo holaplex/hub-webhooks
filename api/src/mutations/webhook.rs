@@ -164,6 +164,7 @@ pub enum FilterType {
 }
 
 impl FilterType {
+    #[must_use]
     pub fn format(self) -> String {
         match self {
             Self::ProjectCreated => "project.created".to_string(),

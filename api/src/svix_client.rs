@@ -16,7 +16,10 @@ pub struct SvixArgs {
 }
 
 impl SvixArgs {
-    #[must_use]
+    /// Res
+    ///
+    /// # Errors
+    /// This function fails if ...
     pub async fn build_client(&self) -> Result<Svix> {
         let SvixArgs {
             svix_base_url,

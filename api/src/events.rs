@@ -57,7 +57,24 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
 
                 broadcast(db, svix, customer.project_id, payload).await
             },
-            Some(_) | None => Ok(()),
+            Some(treasury_events::Event::DropCreated(drop)) => {
+                let payload = serde_json::to_value(DropCreatedEvent {
+                    project_id: drop.project_id.clone(),
+                    drop_id: k.id,
+                })?;
+
+                broadcast(db, svix, drop.project_id, payload).await
+            },
+            Some(treasury_events::Event::DropMinted(mint)) => {
+                let payload = serde_json::to_value(DropMintedEvent {
+                    project_id: mint.project_id.clone(),
+                    drop_id: mint.drop_id,
+                    mint_id: k.id,
+                })?;
+
+                broadcast(db, svix, mint.project_id, payload).await
+            },
+            None => Ok(()),
         },
     }
 }
@@ -126,20 +143,33 @@ async fn broadcast(db: Connection, svix: Svix, project_id: String, payload: Valu
 
 #[derive(Serialize)]
 pub struct CustomerCreatedEvent {
-    project_id: String,
     customer_id: String,
+    project_id: String,
 }
 
 #[derive(Serialize)]
 pub struct CustomerTreasuryCreatedEvent {
+    treasury_id: String,
     project_id: String,
     customer_id: String,
-    treasury_id: String,
 }
 
 #[derive(Serialize)]
 pub struct CustomerWalletCreated {
+    wallet_id: String,
     project_id: String,
     customer_id: String,
-    wallet_id: String,
+}
+
+#[derive(Serialize)]
+pub struct DropCreatedEvent {
+    drop_id: String,
+    project_id: String,
+}
+
+#[derive(Serialize)]
+pub struct DropMintedEvent {
+    mint_id: String,
+    project_id: String,
+    drop_id: String,
 }
