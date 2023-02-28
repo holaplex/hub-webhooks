@@ -1,6 +1,7 @@
 use hub_core::{prelude::*, uuid::Uuid};
 use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
 use serde::Serialize;
+use serde_json::Value;
 use svix::api::{ApplicationIn, MessageIn, Svix};
 
 use crate::{
@@ -8,8 +9,7 @@ use crate::{
     entities::{organization_applications, webhook_projects, webhooks},
     mutations::webhook::FilterType,
     proto::{
-        customer_events, organization_events, Customer, CustomerEventKey, CustomerEvents,
-        Organization, OrganizationEventKey,
+        customer_events, organization_events, treasury_events, Organization, OrganizationEventKey,
     },
     Services,
 };
@@ -29,9 +29,35 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
         },
         Services::Customers(k, e) => match e.event {
             Some(customer_events::Event::Created(customer)) => {
-                broadcast_customer_created_event(db, svix, k, customer).await
+                let payload = serde_json::to_value(CustomerCreatedEvent {
+                    project_id: customer.project_id.clone(),
+                    customer_id: k.id.clone(),
+                })?;
+
+                broadcast(db, svix, customer.project_id, payload).await
             },
             None => Ok(()),
+        },
+        Services::Treasuries(k, e) => match e.event {
+            Some(treasury_events::Event::CustomerTreasuryCreated(customer)) => {
+                let payload = serde_json::to_value(CustomerTreasuryCreatedEvent {
+                    project_id: customer.project_id.clone(),
+                    customer_id: customer.customer_id,
+                    treasury_id: k.id,
+                })?;
+
+                broadcast(db, svix, customer.project_id, payload).await
+            },
+            Some(treasury_events::Event::CustomerWalletCreated(customer)) => {
+                let payload = serde_json::to_value(CustomerWalletCreated {
+                    project_id: customer.project_id.clone(),
+                    customer_id: customer.customer_id,
+                    wallet_id: k.id,
+                })?;
+
+                broadcast(db, svix, customer.project_id, payload).await
+            },
+            Some(_) | None => Ok(()),
         },
     }
 }
@@ -68,20 +94,12 @@ async fn create_svix_application(
     Ok(())
 }
 
-async fn broadcast_customer_created_event(
-    db: Connection,
-    svix: Svix,
-    key: CustomerEventKey,
-    customer: Customer,
-) -> Result<()> {
+async fn broadcast(db: Connection, svix: Svix, project_id: String, payload: Value) -> Result<()> {
     let message = MessageIn {
-        channels: Some(vec![customer.project_id.clone()]),
+        channels: Some(vec![project_id.clone()]),
         event_id: None,
         event_type: FilterType::CustomerCreated.format(),
-        payload: serde_json::to_value(CustomerCreatedEvent {
-            project_id: customer.project_id.clone(),
-            customer_id: key.id,
-        })?,
+        payload,
         payload_retention_period: None,
     };
 
@@ -91,7 +109,7 @@ async fn broadcast_customer_created_event(
             JoinType::InnerJoin,
             webhooks::Relation::OrganizationApplications.def(),
         )
-        .filter(webhook_projects::Column::ProjectId.eq(customer.project_id))
+        .filter(webhook_projects::Column::ProjectId.eq(project_id))
         .one(db.get())
         .await?
         .context("failed to get svix app_id")?;
@@ -101,7 +119,7 @@ async fn broadcast_customer_created_event(
     svix.message()
         .create(app_model.svix_app_id, message, None)
         .await
-        .context("failed to broadcast customer.created message")?;
+        .context("failed to broadcast message")?;
 
     Ok(())
 }
@@ -110,4 +128,18 @@ async fn broadcast_customer_created_event(
 pub struct CustomerCreatedEvent {
     project_id: String,
     customer_id: String,
+}
+
+#[derive(Serialize)]
+pub struct CustomerTreasuryCreatedEvent {
+    project_id: String,
+    customer_id: String,
+    treasury_id: String,
+}
+
+#[derive(Serialize)]
+pub struct CustomerWalletCreated {
+    project_id: String,
+    customer_id: String,
+    wallet_id: String,
 }

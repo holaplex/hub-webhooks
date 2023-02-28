@@ -32,16 +32,19 @@ use svix::api::Svix;
 pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/organization.proto.rs"));
     include!(concat!(env!("OUT_DIR"), "/customer.proto.rs"));
+    include!(concat!(env!("OUT_DIR"), "/treasury.proto.rs"));
 }
 
 #[derive(Debug)]
 pub enum Services {
     Organizations(proto::OrganizationEventKey, proto::OrganizationEvents),
     Customers(proto::CustomerEventKey, proto::CustomerEvents),
+    Treasuries(proto::TreasuryEventKey, proto::TreasuryEvents),
 }
 
 impl hub_core::consumer::MessageGroup for Services {
-    const REQUESTED_TOPICS: &'static [&'static str] = &["hub-orgs", "hub-customers"];
+    const REQUESTED_TOPICS: &'static [&'static str] =
+        &["hub-orgs", "hub-customers", "hub-treasuries"];
 
     fn from_message<M: hub_core::consumer::Message>(msg: &M) -> Result<Self, RecvError> {
         let topic = msg.topic();
@@ -61,6 +64,12 @@ impl hub_core::consumer::MessageGroup for Services {
                 let val = proto::CustomerEvents::decode(val)?;
 
                 Ok(Services::Customers(key, val))
+            },
+            "hub-treasuries" => {
+                let key = proto::TreasuryEventKey::decode(key)?;
+                let val = proto::TreasuryEvents::decode(val)?;
+
+                Ok(Services::Treasuries(key, val))
             },
             t => Err(RecvError::BadTopic(t.into())),
         }
