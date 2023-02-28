@@ -267,7 +267,6 @@ struct Schema {
     title: String,
     description: String,
     r#type: String,
-
     properties: Property,
     required: Vec<String>,
 }

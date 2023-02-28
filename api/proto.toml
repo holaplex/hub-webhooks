@@ -1,8 +1,0 @@
-[registry]
-endpoint = "http://localhost:8081"
-
-[schemas]
-organization = 1
-drops = 1
-customer = 1 
-treasury = 4
