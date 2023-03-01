@@ -45,7 +45,7 @@ RUN apt-get update -y && \
   rm -rf /var/lib/apt/lists/*
 
 FROM base AS hub-webhooks
-COPY --from=builder-hub-orgs /app/target/release/holaplex-hub-webhooks /usr/local/bin
+COPY --from=builder-hub-webhooks /app/target/release/holaplex-hub-webhooks /usr/local/bin
 CMD ["/usr/local/bin/holaplex-hub-webhooks"]
 
 FROM base AS migrator
