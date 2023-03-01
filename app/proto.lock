@@ -1,0 +1,19 @@
+[[schemas]]
+subject = "customer"
+version = 1
+sha512 = "e91f3aa8f20639973deb1ca131c2342b53c802807a52ea40f4f54c3ab7c79158f969cd42a3f3925760941f113270a4549d8d7378e578f9fe5ef6abb09e05848a"
+
+[[schemas]]
+subject = "drops"
+version = 3
+sha512 = "b1f2d842f125f17e0f34fc9bc8bdc01a495d41ebf3300e0a1c46379721b898b03cb84eb791deb42fe6c4a1f227bfd8861bedd5cff8026c7eaefcf11008ec5fe2"
+
+[[schemas]]
+subject = "organization"
+version = 1
+sha512 = "5c17e628a20016c8427fd1d3b79cda44ed384cb2d23e86c04c171628b19cf17b93cfe46baeb1203953786fb498c287c0121671e5f03e6fc175e7c7ef915f4744"
+
+[[schemas]]
+subject = "treasury"
+version = 2
+sha512 = "d23dde10e97f55d8860c8a32bd2908d7bcef526000108ea45545651cb17d0d9de16b8813b51c824c5010f4dc4d93bd56b157fafa70490f2e5a6118fa556a3e6e"
