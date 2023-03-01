@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
-use hub_core::{clap, prelude::*};
+use hub_core::{clap, reqwest::StatusCode};
 use serde::Serialize;
-use svix::api::{EventTypeIn, Svix, SvixOptions};
+use svix::{
+    api::{EventTypeIn, Svix, SvixOptions},
+    error::Error,
+};
 
 use crate::mutations::webhook::FilterType;
 
@@ -20,7 +23,7 @@ impl SvixArgs {
     ///
     /// # Errors
     /// This function fails if ...
-    pub async fn build_client(&self) -> Result<Svix> {
+    pub async fn build_client(&self) -> Result<Svix, Error> {
         let SvixArgs {
             svix_base_url,
             svix_auth_token,
@@ -33,17 +36,25 @@ impl SvixArgs {
 
         let svix_client = Svix::new(svix_auth_token.to_string(), Some(svix_options));
 
-        customer_created_event(svix_client.clone()).await?;
-        customer_treasury_created_event(svix_client.clone()).await?;
-        customer_wallet_created_event(svix_client.clone()).await?;
-        drop_created_event(svix_client.clone()).await?;
-        drop_minted_event(svix_client.clone()).await?;
+        match create_event_types(svix_client.clone()).await {
+            Ok(_) => (),
+            Err(Error::Http(e)) if e.status == StatusCode::CONFLICT => (),
+            Err(e) => return Err(e),
+        }
 
         Ok(svix_client)
     }
 }
 
-async fn customer_created_event(svix_client: Svix) -> Result<()> {
+async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
+    customer_created_event(svix_client.clone()).await?;
+    customer_treasury_created_event(svix_client.clone()).await?;
+    customer_wallet_created_event(svix_client.clone()).await?;
+    drop_created_event(svix_client.clone()).await?;
+    drop_minted_event(svix_client.clone()).await
+}
+
+async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
         title: "Customer created event".to_string(),
         description: "Customer was created in hub-customers service".to_string(),
@@ -70,7 +81,7 @@ async fn customer_created_event(svix_client: Svix) -> Result<()> {
                 description: "A customer was created".to_string(),
                 schemas: Some(HashMap::from([(
                     "1".to_string(),
-                    serde_json::to_value(schema)?,
+                    serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
                 name: FilterType::CustomerCreated.format(),
@@ -82,7 +93,7 @@ async fn customer_created_event(svix_client: Svix) -> Result<()> {
     Ok(())
 }
 
-async fn customer_treasury_created_event(svix_client: Svix) -> Result<()> {
+async fn customer_treasury_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
         title: "Customer treasury created event".to_string(),
         description: "Customer treasury was created in hub-treasuries service".to_string(),
@@ -117,7 +128,7 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<()> {
                 description: "A customer treasury was created".to_string(),
                 schemas: Some(HashMap::from([(
                     "1".to_string(),
-                    serde_json::to_value(schema)?,
+                    serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
                 name: FilterType::CustomerTreasuryCreated.format(),
@@ -129,7 +140,7 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<()> {
     Ok(())
 }
 
-async fn customer_wallet_created_event(svix_client: Svix) -> Result<()> {
+async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
         title: "Customer treasury wallet event".to_string(),
         description: "Customer treasury wallet was created in hub-treasuries service".to_string(),
@@ -164,7 +175,7 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<()> {
                 description: "A customer treasury was created".to_string(),
                 schemas: Some(HashMap::from([(
                     "1".to_string(),
-                    serde_json::to_value(schema)?,
+                    serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
                 name: FilterType::CustomerWalletCreated.format(),
@@ -176,7 +187,7 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<()> {
     Ok(())
 }
 
-async fn drop_created_event(svix_client: Svix) -> Result<()> {
+async fn drop_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
         title: "Drop created".to_string(),
         description: "A Drop was created in hub-nfts service".to_string(),
@@ -203,7 +214,7 @@ async fn drop_created_event(svix_client: Svix) -> Result<()> {
                 description: "A drop was created".to_string(),
                 schemas: Some(HashMap::from([(
                     "1".to_string(),
-                    serde_json::to_value(schema)?,
+                    serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
                 name: FilterType::DropCreated.format(),
@@ -215,7 +226,7 @@ async fn drop_created_event(svix_client: Svix) -> Result<()> {
     Ok(())
 }
 
-async fn drop_minted_event(svix_client: Svix) -> Result<()> {
+async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
         title: "Drop mint created".to_string(),
         description: "A collection was minted in hub-nfts service".to_string(),
@@ -250,7 +261,7 @@ async fn drop_minted_event(svix_client: Svix) -> Result<()> {
                 description: "A collection minted event created".to_string(),
                 schemas: Some(HashMap::from([(
                     "1".to_string(),
-                    serde_json::to_value(schema)?,
+                    serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
                 name: FilterType::DropMinted.format(),
