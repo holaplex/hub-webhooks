@@ -15,7 +15,7 @@ RUN apt-get update -y && \
 
 FROM chef AS planner
 COPY Cargo.* ./
-COPY api api
+COPY app app
 COPY migration migration
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -25,7 +25,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY Cargo.* ./
-COPY api api
+COPY app app
 COPY migration migration
 
 FROM builder AS builder-hub-webhooks
@@ -44,12 +44,10 @@ RUN apt-get update -y && \
   && \
   rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p bin
-
 FROM base AS hub-webhooks
-COPY --from=builder-hub-orgs /app/target/release/holaplex-hub-webhooks bin
-CMD ["bin/holaplex-hub-webhooks"]
+COPY --from=builder-hub-orgs /app/target/release/holaplex-hub-webhooks /usr/local/bin
+CMD ["/usr/local/bin/holaplex-hub-webhooks"]
 
 FROM base AS migrator
-COPY --from=builder-migration /app/target/release/migration bin/
-CMD ["bin/migration"]
+COPY --from=builder-migration /app/target/release/migration /usr/local/bin
+CMD ["/usr/local/bin/migration"]

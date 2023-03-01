@@ -1,12 +1,10 @@
-# hub-rust-boilerplate
-Template rust service repository for the Holaplex Hub
+# Hub Webhooks
 
-# Workspaces
+Register Hub webhooks and broadcast messages using [Svix](https://svix.com/).
+
+# Getting Started
 
 ```
-/api # API server
-/core # shared dependencies such as queries and mutations
-/entity # application database models and graphql objects
-/migration # database migrations
-/src # app entry point
+docker compose up -d
+cargo run --bin holaplex-hub-webhooks
 ```

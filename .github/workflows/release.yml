@@ -36,7 +36,7 @@ jobs:
           file: ./Dockerfile
           target: hub-webhooks
           push: true
-          tags: ${{ vars.DOCKERHUB_ORG }}/hub-webhooks:${{ github.sha }},${{ vars.DOCKERHUB_ORG }}/hub-webhooks:latest
+          tags: holaplex/hub-webhooks:${{ github.sha }},holaplex/hub-webhooks:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       -
@@ -47,6 +47,6 @@ jobs:
           file: ./Dockerfile
           target: migrator
           push: true
-          tags: ${{ vars.DOCKERHUB_ORG }}/hub-webhooks-migrations:${{ github.sha }},${{ vars.DOCKERHUB_ORG }}/hub-webhooks-migrations:latest
+          tags: holaplex/hub-webhooks-migrations:${{ github.sha }},holaplex/hub-webhooks-migrations:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
