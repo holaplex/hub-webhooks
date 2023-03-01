@@ -34,7 +34,14 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                     customer_id: k.id.clone(),
                 })?;
 
-                broadcast(db, svix, customer.project_id, payload).await
+                broadcast(
+                    db,
+                    svix,
+                    customer.project_id,
+                    FilterType::CustomerCreated,
+                    payload,
+                )
+                .await
             },
             None => Ok(()),
         },
@@ -46,16 +53,45 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                     treasury_id: k.id,
                 })?;
 
-                broadcast(db, svix, customer.project_id, payload).await
+                broadcast(
+                    db,
+                    svix,
+                    customer.project_id,
+                    FilterType::CustomerTreasuryCreated,
+                    payload,
+                )
+                .await
             },
             Some(treasury_events::Event::CustomerWalletCreated(customer)) => {
                 let payload = serde_json::to_value(CustomerWalletCreated {
                     project_id: customer.project_id.clone(),
                     customer_id: customer.customer_id,
-                    wallet_id: k.id,
+                    treasury_id: k.id,
                 })?;
 
-                broadcast(db, svix, customer.project_id, payload).await
+                broadcast(
+                    db,
+                    svix,
+                    customer.project_id,
+                    FilterType::CustomerWalletCreated,
+                    payload,
+                )
+                .await
+            },
+            Some(treasury_events::Event::ProjectWalletCreated(p)) => {
+                let payload = serde_json::to_value(ProjectWalletCreated {
+                    treasury_id: k.id,
+                    project_id: p.project_id.clone(),
+                })?;
+
+                broadcast(
+                    db,
+                    svix,
+                    p.project_id,
+                    FilterType::ProjectWalletCreated,
+                    payload,
+                )
+                .await
             },
             Some(treasury_events::Event::DropCreated(drop)) => {
                 let payload = serde_json::to_value(DropCreatedEvent {
@@ -63,7 +99,7 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                     drop_id: k.id,
                 })?;
 
-                broadcast(db, svix, drop.project_id, payload).await
+                broadcast(db, svix, drop.project_id, FilterType::DropCreated, payload).await
             },
             Some(treasury_events::Event::DropMinted(mint)) => {
                 let payload = serde_json::to_value(DropMintedEvent {
@@ -72,8 +108,9 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                     mint_id: k.id,
                 })?;
 
-                broadcast(db, svix, mint.project_id, payload).await
+                broadcast(db, svix, mint.project_id, FilterType::DropMinted, payload).await
             },
+
             None => Ok(()),
         },
     }
@@ -111,11 +148,17 @@ async fn create_svix_application(
     Ok(())
 }
 
-async fn broadcast(db: Connection, svix: Svix, project_id: String, payload: Value) -> Result<()> {
+async fn broadcast(
+    db: Connection,
+    svix: Svix,
+    project_id: String,
+    event_type: FilterType,
+    payload: Value,
+) -> Result<()> {
     let message = MessageIn {
         channels: Some(vec![project_id.clone()]),
         event_id: None,
-        event_type: FilterType::CustomerCreated.format(),
+        event_type: event_type.format(),
         payload,
         payload_retention_period: None,
     };
@@ -156,9 +199,15 @@ pub struct CustomerTreasuryCreatedEvent {
 
 #[derive(Serialize)]
 pub struct CustomerWalletCreated {
-    wallet_id: String,
+    treasury_id: String,
     project_id: String,
     customer_id: String,
+}
+
+#[derive(Serialize)]
+pub struct ProjectWalletCreated {
+    treasury_id: String,
+    project_id: String,
 }
 
 #[derive(Serialize)]

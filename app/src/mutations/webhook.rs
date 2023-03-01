@@ -158,6 +158,7 @@ pub enum FilterType {
     ProjectCreated,
     CustomerCreated,
     CustomerTreasuryCreated,
+    ProjectWalletCreated,
     CustomerWalletCreated,
     DropCreated,
     DropMinted,
@@ -171,6 +172,7 @@ impl FilterType {
             Self::CustomerCreated => "customer.created".to_string(),
             Self::CustomerTreasuryCreated => "customer_treasury.created".to_string(),
             Self::CustomerWalletCreated => "customer_wallet.created".to_string(),
+            Self::ProjectWalletCreated => "project_wallet.created".to_string(),
             Self::DropCreated => "drop.created".to_string(),
             Self::DropMinted => "drop.minted".to_string(),
         }
