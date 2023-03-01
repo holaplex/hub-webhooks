@@ -50,6 +50,7 @@ async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
     customer_created_event(svix_client.clone()).await?;
     customer_treasury_created_event(svix_client.clone()).await?;
     customer_wallet_created_event(svix_client.clone()).await?;
+    project_wallet_created_event(svix_client.clone()).await?;
     drop_created_event(svix_client.clone()).await?;
     drop_minted_event(svix_client.clone()).await
 }
@@ -155,7 +156,7 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
                     description: "Customer id".to_string(),
                     r#type: "string".to_string(),
                 }),
-                ("wallet_id".to_string(), PropertyFields {
+                ("treasury_id".to_string(), PropertyFields {
                     description: "Wallet id".to_string(),
                     r#type: "string".to_string(),
                 }),
@@ -164,7 +165,7 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
         required: vec![
             "project_id".to_string(),
             "customer_id".to_string(),
-            "wallet_id".to_string(),
+            "treasury_id".to_string(),
         ],
     };
 
@@ -172,7 +173,46 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
         .event_type()
         .create(
             EventTypeIn {
-                description: "A customer treasury was created".to_string(),
+                description: "A customer treasury wallet was created".to_string(),
+                schemas: Some(HashMap::from([(
+                    "1".to_string(),
+                    serde_json::to_value(schema).expect("failed to build schema"),
+                )])),
+                archived: Some(false),
+                name: FilterType::CustomerWalletCreated.format(),
+            },
+            None,
+        )
+        .await?;
+
+    Ok(())
+}
+
+async fn project_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
+    let schema = Schema {
+        title: "Project treasury wallet event".to_string(),
+        description: "Project treasury wallet was created in hub-treasuries service".to_string(),
+        r#type: "object".to_string(),
+        properties: Property {
+            fields: HashMap::from([
+                ("project_id".to_string(), PropertyFields {
+                    description: "Project id".to_string(),
+                    r#type: "string".to_string(),
+                }),
+                ("treasury_id".to_string(), PropertyFields {
+                    description: "Wallet id".to_string(),
+                    r#type: "string".to_string(),
+                }),
+            ]),
+        },
+        required: vec!["project_id".to_string(), "treasury_id".to_string()],
+    };
+
+    svix_client
+        .event_type()
+        .create(
+            EventTypeIn {
+                description: "A project treasury wallet was created".to_string(),
                 schemas: Some(HashMap::from([(
                     "1".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
