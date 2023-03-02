@@ -1,26 +1,32 @@
+#![feature(async_closure)]
 #![deny(clippy::disallowed_methods, clippy::suspicious, clippy::style)]
 #![warn(clippy::pedantic, clippy::cargo)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod dataloaders;
 pub mod db;
 #[allow(clippy::pedantic)]
 pub mod entities;
 pub mod events;
 pub mod handlers;
 pub mod mutations;
+pub mod objects;
 pub mod queries;
 pub mod svix_client;
 
 use async_graphql::{
+    dataloader::DataLoader,
     extensions::{ApolloTracing, Logger},
     EmptySubscription, Schema,
 };
+use dataloaders::{WebhookLoader, WebhooksLoader};
 use db::Connection;
 use hub_core::{
     anyhow::{Error, Result},
     clap,
     consumer::RecvError,
     prelude::*,
+    tokio,
     uuid::Uuid,
 };
 use mutations::Mutation;
@@ -138,12 +144,23 @@ impl AppState {
 pub struct AppContext {
     pub db: Connection,
     pub user_id: Option<Uuid>,
+    pub organization_webhooks_loader: DataLoader<WebhooksLoader>,
+    pub webhook_loader: DataLoader<WebhookLoader>,
 }
 
 impl AppContext {
     #[must_use]
-    pub fn new(db: Connection, user_id: Option<Uuid>) -> Self {
-        Self { db, user_id }
+    pub fn new(db: Connection, user_id: Option<Uuid>, svix: Svix) -> Self {
+        let organization_webhooks_loader =
+            DataLoader::new(WebhooksLoader::new(db.clone(), svix.clone()), tokio::spawn);
+        let webhook_loader = DataLoader::new(WebhookLoader::new(db.clone(), svix), tokio::spawn);
+
+        Self {
+            db,
+            user_id,
+            organization_webhooks_loader,
+            webhook_loader,
+        }
     }
 }
 

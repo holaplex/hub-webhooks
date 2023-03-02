@@ -24,7 +24,7 @@ pub async fn graphql_handler(
 ) -> Result<GraphQLResponse> {
     let UserID(user_id) = user_id;
 
-    let context = AppContext::new(state.connection.clone(), user_id);
+    let context = AppContext::new(state.connection.clone(), user_id, state.svix_client.clone());
 
     Ok(state
         .schema
