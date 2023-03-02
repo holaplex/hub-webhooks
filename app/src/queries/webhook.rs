@@ -3,6 +3,8 @@ use hub_core::serde_json;
 use sea_orm::prelude::*;
 use svix::api::{EventTypeOut, Svix};
 
+use crate::{objects::Webhook, AppContext};
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query;
 
@@ -22,6 +24,21 @@ impl Query {
             .iter()
             .map(|d| d.clone().try_into())
             .collect::<_>()
+    }
+
+    /// Res
+    ///
+    /// # Errors
+    /// This function fails if ...
+    #[graphql(entity)]
+    async fn find_webhook_by_id(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(key)] id: Uuid,
+    ) -> Result<Option<Webhook>> {
+        let AppContext { webhook_loader, .. } = ctx.data::<AppContext>()?;
+
+        webhook_loader.load_one(id).await
     }
 }
 
