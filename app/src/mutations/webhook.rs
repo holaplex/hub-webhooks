@@ -1,13 +1,10 @@
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
-use sea_orm::{prelude::*, Set};
+use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
 use svix::api::{EndpointIn, Svix};
 
 use crate::{
-    entities::{
-        organization_applications,
-        webhook_projects::ActiveModel as WebhookProjectActiveModel,
-        webhooks::{self, ActiveModel as WebhookActiveModel, Model as Webhook},
-    },
+    entities::{organization_applications, webhook_projects, webhooks},
+    objects::Webhook,
     AppContext,
 };
 
@@ -30,7 +27,6 @@ impl Mutation {
 
         let user_id = user_id.ok_or_else(|| Error::new("X-USER-ID header not found"))?;
 
-        // Find organization from database to get the svix app id
         let org_app = organization_applications::Entity::find()
             .filter(organization_applications::Column::OrganizationId.eq(input.organization))
             .one(db.get())
@@ -39,12 +35,11 @@ impl Mutation {
 
         let app_id = org_app.svix_app_id;
 
-        // create endpoint request body
         let create_endpoint = EndpointIn {
             channels: Some(input.projects.iter().map(ToString::to_string).collect()),
             filter_types: Some(input.filter_types.iter().map(|e| e.format()).collect()),
             version: 1,
-            description: None,
+            description: Some(input.description),
             disabled: Some(false),
             rate_limit: None,
             secret: None,
@@ -52,21 +47,18 @@ impl Mutation {
             uid: None,
         };
 
-        // create endpoint
         let endpoint = svix
             .endpoint()
             .create(app_id.clone(), create_endpoint, None)
             .await?;
 
-        // Ge the randomly generated endpoint secret
         let endpoint_secret = svix
             .endpoint()
             .get_secret(app_id, endpoint.clone().id)
             .await?;
 
-        // insert the webhook record
-        let webhook_active_model = WebhookActiveModel {
-            endpoint_id: Set(endpoint.id),
+        let webhook_active_model = webhooks::ActiveModel {
+            endpoint_id: Set(endpoint.id.clone()),
             organization_id: Set(input.organization),
             updated_at: Set(None),
             created_by: Set(user_id),
@@ -75,11 +67,10 @@ impl Mutation {
 
         let webhook = webhook_active_model.insert(db.get()).await?;
 
-        // insert all the webhook projects
-        for project in &input.projects {
-            let webhook_project_active_model = WebhookProjectActiveModel {
+        for project in input.projects {
+            let webhook_project_active_model = webhook_projects::ActiveModel {
                 webhook_id: Set(webhook.id),
-                project_id: Set(*project),
+                project_id: Set(project),
                 ..Default::default()
             };
 
@@ -88,7 +79,7 @@ impl Mutation {
 
         // return the webhook object and endpoint secret
         let graphql_response = CreateWebhookPayload {
-            webhook,
+            webhook: Webhook::new(endpoint, webhook),
             secret: endpoint_secret.key,
         };
 
@@ -102,39 +93,37 @@ impl Mutation {
     pub async fn delete_webhook(
         &self,
         ctx: &Context<'_>,
-        input: CreateWebhookInput,
+        input: DeleteWebhookInput,
     ) -> Result<DeleteWebhookPayload> {
         let AppContext { db, .. } = ctx.data::<AppContext>()?;
 
         let svix = ctx.data::<Svix>()?;
 
-        let org_app = organization_applications::Entity::find()
-            .filter(organization_applications::Column::OrganizationId.eq(input.organization))
+        let (webhook, organization_application) = webhooks::Entity::find()
+            .join(
+                JoinType::InnerJoin,
+                webhooks::Relation::OrganizationApplications.def(),
+            )
+            .select_also(organization_applications::Entity)
+            .filter(webhooks::Column::Id.eq(input.webhook))
             .one(db.get())
             .await?
-            .ok_or_else(|| Error::new("organization not found"))?;
+            .ok_or_else(|| Error::new("webhook not found"))?;
+
+        let organization_application = organization_application
+            .ok_or_else(|| Error::new("organization_application not found"))?;
 
         svix.endpoint()
-            .delete(org_app.svix_app_id.clone(), input.endpoint.clone())
-            .await?;
-
-        let res = webhooks::Entity::delete_many()
-            .filter(
-                webhooks::Column::EndpointId
-                    .eq(input.endpoint.clone())
-                    .and(webhooks::Column::OrganizationId.eq(input.organization)),
+            .delete(
+                organization_application.svix_app_id,
+                webhook.endpoint_id.clone(),
             )
-            .exec(db.get())
             .await?;
 
-        if res.rows_affected != 1 {
-            return Err(Error::new(format!("Rows affected: {}", res.rows_affected)));
-        }
+        webhook.delete(db.get()).await?;
 
         Ok(DeleteWebhookPayload {
-            app_id: org_app.svix_app_id,
-            endpoint: input.endpoint,
-            organization_id: input.organization,
+            webhook: input.webhook,
         })
     }
 }
@@ -143,6 +132,7 @@ impl Mutation {
 pub struct CreateWebhookInput {
     pub endpoint: String,
     pub organization: Uuid,
+    pub description: String,
     pub projects: Vec<Uuid>,
     pub filter_types: Vec<FilterType>,
 }
@@ -181,13 +171,10 @@ impl FilterType {
 
 #[derive(Debug, Clone, InputObject)]
 pub struct DeleteWebhookInput {
-    pub endpoint: String,
-    pub organization: Uuid,
+    pub webhook: Uuid,
 }
 
 #[derive(Debug, Clone, SimpleObject)]
 pub struct DeleteWebhookPayload {
-    app_id: String,
-    organization_id: Uuid,
-    endpoint: String,
+    webhook: Uuid,
 }

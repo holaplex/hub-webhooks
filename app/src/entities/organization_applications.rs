@@ -13,6 +13,15 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::webhooks::Entity",
+        from = "Column::OrganizationId",
+        to = "super::webhooks::Column::OrganizationId",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
+    Webhooks,
+}
 
 impl ActiveModelBehavior for ActiveModel {}
