@@ -167,6 +167,10 @@ async fn broadcast(
         .select_also(organization_applications::Entity)
         .join(
             JoinType::InnerJoin,
+            webhook_projects::Relation::Webhooks.def(),
+        )
+        .join(
+            JoinType::InnerJoin,
             webhooks::Relation::OrganizationApplications.def(),
         )
         .filter(webhook_projects::Column::ProjectId.eq(project_id))
