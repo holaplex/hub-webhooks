@@ -47,12 +47,12 @@ impl SvixArgs {
 }
 
 async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
+    drop_created_event(svix_client.clone()).await?;
+    drop_minted_event(svix_client.clone()).await?;
     customer_created_event(svix_client.clone()).await?;
     customer_treasury_created_event(svix_client.clone()).await?;
     customer_wallet_created_event(svix_client.clone()).await?;
-    project_wallet_created_event(svix_client.clone()).await?;
-    drop_created_event(svix_client.clone()).await?;
-    drop_minted_event(svix_client.clone()).await
+    project_wallet_created_event(svix_client.clone()).await
 }
 
 async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
