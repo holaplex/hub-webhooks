@@ -163,8 +163,9 @@ async fn broadcast(
         payload_retention_period: None,
     };
 
-    let (_, app) = webhook_projects::Entity::find()
-        .select_also(organization_applications::Entity)
+    let project_id = Uuid::parse_str(&project_id)?;
+
+    let app = organization_applications::Entity::find()
         .join(
             JoinType::InnerJoin,
             webhook_projects::Relation::Webhooks.def(),
@@ -178,10 +179,8 @@ async fn broadcast(
         .await?
         .context("failed to get svix app_id")?;
 
-    let app_model = app.context("no application found")?;
-
     svix.message()
-        .create(app_model.svix_app_id, message, None)
+        .create(app.svix_app_id, message, None)
         .await
         .context("failed to broadcast message")?;
 
