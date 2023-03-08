@@ -98,7 +98,7 @@ async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
             EventTypeIn {
                 description: "A customer was created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "2".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -160,7 +160,7 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<(), Error>
             EventTypeIn {
                 description: "A customer treasury was created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "2".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -224,7 +224,7 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
             EventTypeIn {
                 description: "A customer treasury wallet was created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "2".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -281,7 +281,7 @@ async fn project_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
             EventTypeIn {
                 description: "A project treasury wallet was created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "2".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -337,7 +337,7 @@ async fn drop_created_event(svix_client: Svix) -> Result<(), Error> {
             EventTypeIn {
                 description: "A drop was created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "2".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -399,7 +399,7 @@ async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
             EventTypeIn {
                 description: "A collection minted event created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "2".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),

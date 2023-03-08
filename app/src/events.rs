@@ -215,6 +215,7 @@ pub struct Event {
 }
 
 #[derive(Serialize)]
+#[serde(untagged)]
 pub enum EventPayload {
     CustomerCreated(CustomerCreatedPayload),
     CustomerTreasuryCreated(CustomerTreasuryCreatedPayload),
