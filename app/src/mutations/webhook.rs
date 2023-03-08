@@ -128,7 +128,7 @@ impl Mutation {
     }
 }
 
-#[derive(InputObject, Clone)]
+#[derive(Debug, InputObject, Clone)]
 pub struct CreateWebhookInput {
     pub endpoint: String,
     pub organization: Uuid,
