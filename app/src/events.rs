@@ -168,11 +168,11 @@ async fn broadcast(
     let app = organization_applications::Entity::find()
         .join(
             JoinType::InnerJoin,
-            webhook_projects::Relation::Webhooks.def(),
+            organization_applications::Relation::Webhooks.def(),
         )
         .join(
             JoinType::InnerJoin,
-            webhooks::Relation::OrganizationApplications.def(),
+            webhooks::Relation::WebhookProjects.def(),
         )
         .filter(webhook_projects::Column::ProjectId.eq(project_id))
         .one(db.get())
