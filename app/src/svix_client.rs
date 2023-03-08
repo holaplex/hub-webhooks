@@ -47,32 +47,49 @@ impl SvixArgs {
 }
 
 async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
+    drop_created_event(svix_client.clone()).await?;
+    drop_minted_event(svix_client.clone()).await?;
     customer_created_event(svix_client.clone()).await?;
     customer_treasury_created_event(svix_client.clone()).await?;
     customer_wallet_created_event(svix_client.clone()).await?;
-    project_wallet_created_event(svix_client.clone()).await?;
-    drop_created_event(svix_client.clone()).await?;
-    drop_minted_event(svix_client.clone()).await
+    project_wallet_created_event(svix_client.clone()).await
 }
 
 async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
-        title: "Customer created event".to_string(),
-        description: "Customer was created in hub-customers service".to_string(),
-        r#type: "object".to_string(),
-        properties: Property {
-            fields: HashMap::from([
-                ("project_id".to_string(), PropertyFields {
-                    description: "Project id".to_string(),
+        fields: Fields {
+            title: Some("Customer created event".to_string()),
+            description: "Customer was created in hub-customers service".to_string(),
+            r#type: "object".to_string(),
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
                     r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
                 }),
-                ("customer_id".to_string(), PropertyFields {
-                    description: "Customer id".to_string(),
-                    r#type: "string".to_string(),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("customer_id".to_string(), Fields {
+                            description: "Customer id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
                 }),
-            ]),
+            ])),
         },
-        required: vec!["project_id".to_string(), "customer_id".to_string()],
+        required: vec!["event_type".to_string(), "payload".to_string()],
     };
 
     svix_client
@@ -96,30 +113,45 @@ async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
 
 async fn customer_treasury_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
-        title: "Customer treasury created event".to_string(),
-        description: "Customer treasury was created in hub-treasuries service".to_string(),
-        r#type: "object".to_string(),
-        properties: Property {
-            fields: HashMap::from([
-                ("project_id".to_string(), PropertyFields {
-                    description: "Project id".to_string(),
+        fields: Fields {
+            title: Some("Customer treasury created event".to_string()),
+            description: "Customer treasury was created in hub-treasuries service".to_string(),
+            r#type: "object".to_string(),
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
                     r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
                 }),
-                ("customer_id".to_string(), PropertyFields {
-                    description: "Customer id".to_string(),
-                    r#type: "string".to_string(),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("customer_id".to_string(), Fields {
+                            description: "Customer id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("treasury_id".to_string(), Fields {
+                            description: "Treasury id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
                 }),
-                ("treasury_id".to_string(), PropertyFields {
-                    description: "Treasury id".to_string(),
-                    r#type: "string".to_string(),
-                }),
-            ]),
+            ])),
         },
-        required: vec![
-            "project_id".to_string(),
-            "customer_id".to_string(),
-            "treasury_id".to_string(),
-        ],
+        required: vec!["event_type".to_string(), "payload".to_string()],
     };
 
     svix_client
@@ -143,30 +175,47 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<(), Error>
 
 async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
-        title: "Customer treasury wallet event".to_string(),
-        description: "Customer treasury wallet was created in hub-treasuries service".to_string(),
-        r#type: "object".to_string(),
-        properties: Property {
-            fields: HashMap::from([
-                ("project_id".to_string(), PropertyFields {
-                    description: "Project id".to_string(),
+        fields: Fields {
+            title: Some("Customer treasury wallet event".to_string()),
+            description: "Customer treasury wallet was created in hub-treasuries service"
+                .to_string(),
+            r#type: "object".to_string(),
+
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
                     r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
                 }),
-                ("customer_id".to_string(), PropertyFields {
-                    description: "Customer id".to_string(),
-                    r#type: "string".to_string(),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("customer_id".to_string(), Fields {
+                            description: "Customer id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("treasury_id".to_string(), Fields {
+                            description: "Wallet id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
                 }),
-                ("treasury_id".to_string(), PropertyFields {
-                    description: "Wallet id".to_string(),
-                    r#type: "string".to_string(),
-                }),
-            ]),
+            ])),
         },
-        required: vec![
-            "project_id".to_string(),
-            "customer_id".to_string(),
-            "treasury_id".to_string(),
-        ],
+        required: vec!["event_type".to_string(), "payload".to_string()],
     };
 
     svix_client
@@ -190,22 +239,40 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
 
 async fn project_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
-        title: "Project treasury wallet event".to_string(),
-        description: "Project treasury wallet was created in hub-treasuries service".to_string(),
-        r#type: "object".to_string(),
-        properties: Property {
-            fields: HashMap::from([
-                ("project_id".to_string(), PropertyFields {
-                    description: "Project id".to_string(),
+        fields: Fields {
+            title: Some("Project treasury wallet event".to_string()),
+            description: "Project treasury wallet was created in hub-treasuries service"
+                .to_string(),
+            r#type: "object".to_string(),
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
                     r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
                 }),
-                ("treasury_id".to_string(), PropertyFields {
-                    description: "Wallet id".to_string(),
-                    r#type: "string".to_string(),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("treasury_id".to_string(), Fields {
+                            description: "Wallet id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
                 }),
-            ]),
+            ])),
         },
-        required: vec!["project_id".to_string(), "treasury_id".to_string()],
+        required: vec!["event_type".to_string(), "payload".to_string()],
     };
 
     svix_client
@@ -229,22 +296,39 @@ async fn project_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
 
 async fn drop_created_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
-        title: "Drop created".to_string(),
-        description: "A Drop was created in hub-nfts service".to_string(),
-        r#type: "object".to_string(),
-        properties: Property {
-            fields: HashMap::from([
-                ("project_id".to_string(), PropertyFields {
-                    description: "Project id".to_string(),
+        fields: Fields {
+            title: Some("Drop created".to_string()),
+            description: "A Drop was created in hub-nfts service".to_string(),
+            r#type: "object".to_string(),
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
                     r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
                 }),
-                ("drop_id".to_string(), PropertyFields {
-                    description: "Drop id".to_string(),
-                    r#type: "string".to_string(),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("drop_id".to_string(), Fields {
+                            description: "Drop id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
                 }),
-            ]),
+            ])),
         },
-        required: vec!["project_id".to_string(), "drop_id".to_string()],
+        required: vec!["event_type".to_string(), "payload".to_string()],
     };
 
     svix_client
@@ -268,30 +352,45 @@ async fn drop_created_event(svix_client: Svix) -> Result<(), Error> {
 
 async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
     let schema = Schema {
-        title: "Drop mint created".to_string(),
-        description: "A collection was minted in hub-nfts service".to_string(),
-        r#type: "object".to_string(),
-        properties: Property {
-            fields: HashMap::from([
-                ("project_id".to_string(), PropertyFields {
-                    description: "Project id".to_string(),
+        fields: Fields {
+            title: Some("Drop mint created".to_string()),
+            description: "A collection was minted in hub-nfts service".to_string(),
+            r#type: "object".to_string(),
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
                     r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
                 }),
-                ("drop_id".to_string(), PropertyFields {
-                    description: "Drop id".to_string(),
-                    r#type: "string".to_string(),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("drop_id".to_string(), Fields {
+                            description: "Drop id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("mint_id".to_string(), Fields {
+                            description: "Mint id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
                 }),
-                ("mint_id".to_string(), PropertyFields {
-                    description: "Mint id".to_string(),
-                    r#type: "string".to_string(),
-                }),
-            ]),
+            ])),
         },
-        required: vec![
-            "project_id".to_string(),
-            "drop_id".to_string(),
-            "mint_id".to_string(),
-        ],
+        required: vec!["event_type".to_string(), "payload".to_string()],
     };
 
     svix_client
@@ -315,21 +414,17 @@ async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
 
 #[derive(Serialize)]
 struct Schema {
-    title: String,
-    description: String,
-    r#type: String,
-    properties: Property,
+    #[serde(flatten)]
+    fields: Fields,
     required: Vec<String>,
 }
 
 #[derive(Serialize)]
-struct Property {
-    #[serde(flatten)]
-    fields: HashMap<String, PropertyFields>,
-}
-
-#[derive(Serialize)]
-struct PropertyFields {
+struct Fields {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: Option<String>,
     description: String,
     r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    properties: Option<HashMap<String, Fields>>,
 }
