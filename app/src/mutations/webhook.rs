@@ -180,14 +180,36 @@ impl Mutation {
             )
             .await?;
 
-        for project in input.projects {
-            let webhook_project_active_model = webhook_projects::ActiveModel {
-                webhook_id: Set(webhook.id),
-                project_id: Set(project),
-                ..Default::default()
-            };
+        let current_projects: Vec<Uuid> = webhook_projects::Entity::find()
+            .filter(webhook_projects::Column::WebhookId.eq(webhook.id.clone()))
+            .select_only()
+            .column(webhook_projects::Column::ProjectId)
+            .all(db.get())
+            .await?
+            .into_iter()
+            .map(|p| p.project_id.clone())
+            .collect();
 
-            webhook_project_active_model.insert(db.get()).await?;
+        for project in input.projects.clone() {
+            if !current_projects.contains(&project) {
+                let webhook_project_active_model = webhook_projects::ActiveModel {
+                    webhook_id: Set(webhook.id),
+                    project_id: Set(project),
+                    ..Default::default()
+                };
+                webhook_project_active_model.insert(db.get()).await?;
+            }
+        }
+
+        for project in current_projects.clone() {
+            if !input.projects.contains(&project) {
+                let webhook_project_active_model = webhook_projects::ActiveModel {
+                    webhook_id: Set(webhook.id),
+                    project_id: Set(project),
+                    ..Default::default()
+                };
+                webhook_project_active_model.delete(db.get()).await?;
+            }
         }
 
         let webhook_active_model = webhooks::ActiveModel {
