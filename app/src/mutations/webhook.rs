@@ -1,6 +1,7 @@
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
+use hub_core::chrono::Utc;
 use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
-use svix::api::{EndpointIn, Svix};
+use svix::api::{EndpointIn, Svix, EndpointUpdate};
 
 use crate::{
     entities::{organization_applications, webhook_projects, webhooks},
@@ -126,6 +127,76 @@ impl Mutation {
             webhook: input.webhook,
         })
     }
+
+    /// Res
+    ///
+    /// # Errors
+    /// This function fails if ...
+    pub async fn edit_webhook(
+        &self,
+        ctx: &Context<'_>,
+        input: EditWebhookInput,
+    ) -> Result<EditWebhookPayload> {
+        let AppContext { db, user_id, .. } = ctx.data::<AppContext>()?;
+        let svix = ctx.data::<Svix>()?;
+
+        let user_id = user_id.ok_or_else(|| Error::new("X-USER-ID header not found"))?;
+
+        let webhook = webhooks::Entity::find()
+            .filter(webhooks::Column::Id.eq(input.webhook))
+            .one(db.get())
+            .await?
+            .ok_or_else(|| Error::new("webhook not found"))?;
+
+        let org_app = organization_applications::Entity::find()
+            .filter(organization_applications::Column::OrganizationId.eq(webhook.organization_id.clone()))
+            .one(db.get())
+            .await?
+            .ok_or_else(|| Error::new("organization not found"))?;
+
+        let app_id = org_app.svix_app_id;
+
+        let update_endpoint = EndpointUpdate {
+            channels: Some(input.projects.iter().map(ToString::to_string).collect()),
+            filter_types: Some(input.filter_types.iter().map(|e| e.format()).collect()),
+            version: 1,
+            description: Some(input.description),
+            disabled: input.disabled,
+            rate_limit: input.rate_limit,
+            url: input.endpoint,
+            uid: Some(webhook.id.clone().to_string()),
+        };
+
+        let endpoint = svix
+            .endpoint()
+            .update(app_id.clone(), webhook.endpoint_id.clone(), update_endpoint, None)
+            .await?;
+
+        for project in input.projects {
+            let webhook_project_active_model = webhook_projects::ActiveModel {
+                webhook_id: Set(webhook.id),
+                project_id: Set(project),
+                ..Default::default()
+            };
+
+            webhook_project_active_model.insert(db.get()).await?;
+        }
+
+        let webhook_active_model = webhooks::ActiveModel {
+            endpoint_id: Set(endpoint.id.clone()),
+            organization_id: Set(webhook.organization_id.clone()),
+            updated_at: Set(Some(Utc::now().naive_utc())),
+            created_by: Set(user_id),
+            ..Default::default()
+        };
+
+        let webhook = webhook_active_model.insert(db.get()).await?;
+
+        Ok(EditWebhookPayload {
+            webhook: Webhook::new(endpoint, webhook),
+        })
+    }
+
 }
 
 #[derive(Debug, InputObject, Clone)]
@@ -177,4 +248,20 @@ pub struct DeleteWebhookInput {
 #[derive(Debug, Clone, SimpleObject)]
 pub struct DeleteWebhookPayload {
     webhook: Uuid,
+}
+
+#[derive(Debug, InputObject, Clone)]
+pub struct EditWebhookInput {
+    pub webhook: Uuid,
+    pub endpoint: String,
+    pub description: String,
+    pub projects: Vec<Uuid>,
+    pub filter_types: Vec<FilterType>,
+    pub disabled: Option<bool>,
+    pub rate_limit: Option<i32>
+}
+
+#[derive(SimpleObject, Debug, Clone)]
+pub struct EditWebhookPayload {
+    pub webhook: Webhook,
 }
