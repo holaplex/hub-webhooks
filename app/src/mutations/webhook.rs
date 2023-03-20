@@ -1,7 +1,7 @@
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
 use hub_core::chrono::Utc;
 use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
-use svix::api::{EndpointIn, Svix, EndpointUpdate};
+use svix::api::{EndpointIn, EndpointUpdate, Svix};
 
 use crate::{
     entities::{organization_applications, webhook_projects, webhooks},
@@ -149,7 +149,10 @@ impl Mutation {
             .ok_or_else(|| Error::new("webhook not found"))?;
 
         let org_app = organization_applications::Entity::find()
-            .filter(organization_applications::Column::OrganizationId.eq(webhook.organization_id.clone()))
+            .filter(
+                organization_applications::Column::OrganizationId
+                    .eq(webhook.organization_id.clone()),
+            )
             .one(db.get())
             .await?
             .ok_or_else(|| Error::new("organization not found"))?;
@@ -169,7 +172,12 @@ impl Mutation {
 
         let endpoint = svix
             .endpoint()
-            .update(app_id.clone(), webhook.endpoint_id.clone(), update_endpoint, None)
+            .update(
+                app_id.clone(),
+                webhook.endpoint_id.clone(),
+                update_endpoint,
+                None,
+            )
             .await?;
 
         for project in input.projects {
@@ -196,7 +204,6 @@ impl Mutation {
             webhook: Webhook::new(endpoint, webhook),
         })
     }
-
 }
 
 #[derive(Debug, InputObject, Clone)]
@@ -258,7 +265,7 @@ pub struct EditWebhookInput {
     pub projects: Vec<Uuid>,
     pub filter_types: Vec<FilterType>,
     pub disabled: Option<bool>,
-    pub rate_limit: Option<i32>
+    pub rate_limit: Option<i32>,
 }
 
 #[derive(SimpleObject, Debug, Clone)]
