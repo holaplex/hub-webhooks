@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
 use hub_core::chrono::Utc;
 use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
@@ -202,7 +204,7 @@ impl Mutation {
         let update_endpoint = EndpointUpdate {
             channels: Some(input.projects.iter().map(ToString::to_string).collect()),
             filter_types: Some(input.filter_types.iter().map(|e| e.format()).collect()),
-            version: current_endpoint.version,
+            version: current_endpoint.version.add(1),
             description: Some(input.description),
             disabled: input.disabled,
             rate_limit: current_endpoint.rate_limit,
