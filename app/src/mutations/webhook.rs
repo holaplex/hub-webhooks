@@ -137,10 +137,8 @@ impl Mutation {
         ctx: &Context<'_>,
         input: EditWebhookInput,
     ) -> Result<EditWebhookPayload> {
-        let AppContext { db, user_id, .. } = ctx.data::<AppContext>()?;
+        let AppContext { db, .. } = ctx.data::<AppContext>()?;
         let svix = ctx.data::<Svix>()?;
-
-        let user_id = user_id.ok_or_else(|| Error::new("X-USER-ID header not found"))?;
 
         let webhook = webhooks::Entity::find()
             .filter(webhooks::Column::Id.eq(input.webhook))
@@ -159,15 +157,57 @@ impl Mutation {
 
         let app_id = org_app.svix_app_id;
 
+        let current_projects: Vec<Uuid> = webhook_projects::Entity::find()
+            .filter(webhook_projects::Column::WebhookId.eq(webhook.id))
+            .select_only()
+            .column(webhook_projects::Column::ProjectId)
+            .all(db.get())
+            .await?
+            .into_iter()
+            .map(|p| p.project_id)
+            .collect();
+
+        // link new projects
+        for project in input.projects.clone() {
+            if !current_projects.contains(&project) {
+                let webhook_project_active_model = webhook_projects::ActiveModel {
+                    webhook_id: Set(webhook.id),
+                    project_id: Set(project),
+                    ..Default::default()
+                };
+                webhook_project_active_model.insert(db.get()).await?;
+            }
+        }
+
+        // unlink removed projects
+        for project in current_projects {
+            if !input.projects.contains(&project) {
+                let webhook_project = webhook_projects::Entity::find()
+                    .filter(webhook_projects::Column::WebhookId.eq(webhook.id))
+                    .filter(webhook_projects::Column::ProjectId.eq(project))
+                    .one(db.get())
+                    .await?
+                    .ok_or_else(|| Error::new("webhook project not found"))?;
+
+                webhook_project.delete(db.get()).await?;
+            }
+        }
+
+        // get and update endpoint
+        let current_endpoint = svix
+            .endpoint()
+            .get(app_id.clone(), webhook.endpoint_id.clone())
+            .await?;
+
         let update_endpoint = EndpointUpdate {
             channels: Some(input.projects.iter().map(ToString::to_string).collect()),
             filter_types: Some(input.filter_types.iter().map(|e| e.format()).collect()),
-            version: 1,
+            version: current_endpoint.version,
             description: Some(input.description),
             disabled: input.disabled,
-            rate_limit: input.rate_limit,
-            url: input.endpoint,
-            uid: Some(webhook.id.clone().to_string()),
+            rate_limit: current_endpoint.rate_limit,
+            url: input.url,
+            uid: current_endpoint.uid,
         };
 
         let endpoint = svix
@@ -180,47 +220,10 @@ impl Mutation {
             )
             .await?;
 
-        let current_projects: Vec<Uuid> = webhook_projects::Entity::find()
-            .filter(webhook_projects::Column::WebhookId.eq(webhook.id.clone()))
-            .select_only()
-            .column(webhook_projects::Column::ProjectId)
-            .all(db.get())
-            .await?
-            .into_iter()
-            .map(|p| p.project_id.clone())
-            .collect();
+        let mut active_webhook: webhooks::ActiveModel = webhook.clone().into();
+        active_webhook.updated_at = Set(Some(Utc::now().naive_utc()));
 
-        for project in input.projects.clone() {
-            if !current_projects.contains(&project) {
-                let webhook_project_active_model = webhook_projects::ActiveModel {
-                    webhook_id: Set(webhook.id),
-                    project_id: Set(project),
-                    ..Default::default()
-                };
-                webhook_project_active_model.insert(db.get()).await?;
-            }
-        }
-
-        for project in current_projects.clone() {
-            if !input.projects.contains(&project) {
-                let webhook_project_active_model = webhook_projects::ActiveModel {
-                    webhook_id: Set(webhook.id),
-                    project_id: Set(project),
-                    ..Default::default()
-                };
-                webhook_project_active_model.delete(db.get()).await?;
-            }
-        }
-
-        let webhook_active_model = webhooks::ActiveModel {
-            endpoint_id: Set(endpoint.id.clone()),
-            organization_id: Set(webhook.organization_id.clone()),
-            updated_at: Set(Some(Utc::now().naive_utc())),
-            created_by: Set(user_id),
-            ..Default::default()
-        };
-
-        let webhook = webhook_active_model.insert(db.get()).await?;
+        active_webhook.update(db.get()).await?;
 
         Ok(EditWebhookPayload {
             webhook: Webhook::new(endpoint, webhook),
@@ -282,12 +285,11 @@ pub struct DeleteWebhookPayload {
 #[derive(Debug, InputObject, Clone)]
 pub struct EditWebhookInput {
     pub webhook: Uuid,
-    pub endpoint: String,
+    pub url: String,
     pub description: String,
     pub projects: Vec<Uuid>,
     pub filter_types: Vec<FilterType>,
     pub disabled: Option<bool>,
-    pub rate_limit: Option<i32>,
 }
 
 #[derive(SimpleObject, Debug, Clone)]
