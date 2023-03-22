@@ -46,7 +46,7 @@ impl Mutation {
             disabled: Some(false),
             rate_limit: None,
             secret: None,
-            url: input.endpoint,
+            url: input.url,
             uid: None,
         };
 
@@ -149,10 +149,7 @@ impl Mutation {
             .ok_or_else(|| Error::new("webhook not found"))?;
 
         let org_app = organization_applications::Entity::find()
-            .filter(
-                organization_applications::Column::OrganizationId
-                    .eq(webhook.organization_id.clone()),
-            )
+            .filter(organization_applications::Column::OrganizationId.eq(webhook.organization_id))
             .one(db.get())
             .await?
             .ok_or_else(|| Error::new("organization not found"))?;
@@ -235,7 +232,7 @@ impl Mutation {
 
 #[derive(Debug, InputObject, Clone)]
 pub struct CreateWebhookInput {
-    pub endpoint: String,
+    pub url: String,
     pub organization: Uuid,
     pub description: String,
     pub projects: Vec<Uuid>,
