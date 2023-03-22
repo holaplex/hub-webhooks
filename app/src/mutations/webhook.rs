@@ -1,6 +1,9 @@
+use std::ops::Add;
+
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
-use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
-use svix::api::{EndpointIn, Svix};
+use hub_core::chrono::Utc;
+use sea_orm::{prelude::*, JoinType, QuerySelect, Set, TransactionTrait};
+use svix::api::{EndpointIn, EndpointUpdate, Svix};
 
 use crate::{
     entities::{organization_applications, webhook_projects, webhooks},
@@ -43,7 +46,7 @@ impl Mutation {
             disabled: Some(false),
             rate_limit: None,
             secret: None,
-            url: input.endpoint,
+            url: input.url,
             uid: None,
         };
 
@@ -126,11 +129,102 @@ impl Mutation {
             webhook: input.webhook,
         })
     }
+
+    /// Res
+    ///
+    /// # Errors
+    /// This function fails if ...
+    pub async fn edit_webhook(
+        &self,
+        ctx: &Context<'_>,
+        input: EditWebhookInput,
+    ) -> Result<EditWebhookPayload> {
+        let AppContext { db, .. } = ctx.data::<AppContext>()?;
+        let svix = ctx.data::<Svix>()?;
+        let conn = db.get();
+
+        let webhook = webhooks::Entity::find()
+            .filter(webhooks::Column::Id.eq(input.webhook))
+            .one(conn)
+            .await?
+            .ok_or_else(|| Error::new("webhook not found"))?;
+
+        let org_app = organization_applications::Entity::find()
+            .filter(organization_applications::Column::OrganizationId.eq(webhook.organization_id))
+            .one(conn)
+            .await?
+            .ok_or_else(|| Error::new("organization not found"))?;
+
+        let app_id = org_app.svix_app_id;
+
+        conn.transaction::<_, (), DbErr>(|tx| {
+            let projects = input.projects.clone();
+
+            Box::pin(async move {
+                webhook_projects::Entity::delete_many()
+                    .filter(webhook_projects::Column::WebhookId.eq(webhook.id))
+                    .exec(tx)
+                    .await?;
+
+                let webhook_projects: Vec<webhook_projects::ActiveModel> = projects
+                    .into_iter()
+                    .map(|project| webhook_projects::ActiveModel {
+                        webhook_id: Set(webhook.id),
+                        project_id: Set(project),
+                        ..Default::default()
+                    })
+                    .collect();
+
+                webhook_projects::Entity::insert_many(webhook_projects)
+                    .exec(tx)
+                    .await?;
+
+                Ok(())
+            })
+        })
+        .await?;
+
+        // get and update endpoint
+        let current_endpoint = svix
+            .endpoint()
+            .get(app_id.clone(), webhook.endpoint_id.clone())
+            .await?;
+
+        let update_endpoint = EndpointUpdate {
+            channels: Some(input.projects.iter().map(ToString::to_string).collect()),
+            filter_types: Some(input.filter_types.iter().map(|e| e.format()).collect()),
+            version: current_endpoint.version.add(1),
+            description: Some(input.description),
+            disabled: input.disabled,
+            rate_limit: current_endpoint.rate_limit,
+            url: input.url,
+            uid: current_endpoint.uid,
+        };
+
+        let endpoint = svix
+            .endpoint()
+            .update(
+                app_id.clone(),
+                webhook.endpoint_id.clone(),
+                update_endpoint,
+                None,
+            )
+            .await?;
+
+        let mut active_webhook: webhooks::ActiveModel = webhook.clone().into();
+        active_webhook.updated_at = Set(Some(Utc::now().naive_utc()));
+
+        active_webhook.update(conn).await?;
+
+        Ok(EditWebhookPayload {
+            webhook: Webhook::new(endpoint, webhook),
+        })
+    }
 }
 
 #[derive(Debug, InputObject, Clone)]
 pub struct CreateWebhookInput {
-    pub endpoint: String,
+    pub url: String,
     pub organization: Uuid,
     pub description: String,
     pub projects: Vec<Uuid>,
@@ -177,4 +271,19 @@ pub struct DeleteWebhookInput {
 #[derive(Debug, Clone, SimpleObject)]
 pub struct DeleteWebhookPayload {
     webhook: Uuid,
+}
+
+#[derive(Debug, InputObject, Clone)]
+pub struct EditWebhookInput {
+    pub webhook: Uuid,
+    pub url: String,
+    pub description: String,
+    pub projects: Vec<Uuid>,
+    pub filter_types: Vec<FilterType>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(SimpleObject, Debug, Clone)]
+pub struct EditWebhookPayload {
+    pub webhook: Webhook,
 }
