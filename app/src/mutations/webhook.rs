@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
 use hub_core::chrono::Utc;
-use sea_orm::{prelude::*, JoinType, QuerySelect, Set};
+use sea_orm::{prelude::*, JoinType, QuerySelect, Set, TransactionTrait};
 use svix::api::{EndpointIn, EndpointUpdate, Svix};
 
 use crate::{
@@ -141,56 +141,48 @@ impl Mutation {
     ) -> Result<EditWebhookPayload> {
         let AppContext { db, .. } = ctx.data::<AppContext>()?;
         let svix = ctx.data::<Svix>()?;
+        let conn = db.get();
 
         let webhook = webhooks::Entity::find()
             .filter(webhooks::Column::Id.eq(input.webhook))
-            .one(db.get())
+            .one(conn)
             .await?
             .ok_or_else(|| Error::new("webhook not found"))?;
 
         let org_app = organization_applications::Entity::find()
             .filter(organization_applications::Column::OrganizationId.eq(webhook.organization_id))
-            .one(db.get())
+            .one(conn)
             .await?
             .ok_or_else(|| Error::new("organization not found"))?;
 
         let app_id = org_app.svix_app_id;
 
-        let current_projects: Vec<Uuid> = webhook_projects::Entity::find()
-            .filter(webhook_projects::Column::WebhookId.eq(webhook.id))
-            .select_only()
-            .column(webhook_projects::Column::ProjectId)
-            .all(db.get())
-            .await?
-            .into_iter()
-            .map(|p| p.project_id)
-            .collect();
+        conn.transaction::<_, (), DbErr>(|tx| {
+            let projects = input.projects.clone();
 
-        // link new projects
-        for project in input.projects.clone() {
-            if !current_projects.contains(&project) {
-                let webhook_project_active_model = webhook_projects::ActiveModel {
-                    webhook_id: Set(webhook.id),
-                    project_id: Set(project),
-                    ..Default::default()
-                };
-                webhook_project_active_model.insert(db.get()).await?;
-            }
-        }
-
-        // unlink removed projects
-        for project in current_projects {
-            if !input.projects.contains(&project) {
-                let webhook_project = webhook_projects::Entity::find()
+            Box::pin(async move {
+                webhook_projects::Entity::delete_many()
                     .filter(webhook_projects::Column::WebhookId.eq(webhook.id))
-                    .filter(webhook_projects::Column::ProjectId.eq(project))
-                    .one(db.get())
-                    .await?
-                    .ok_or_else(|| Error::new("webhook project not found"))?;
+                    .exec(tx)
+                    .await?;
 
-                webhook_project.delete(db.get()).await?;
-            }
-        }
+                let webhook_projects: Vec<webhook_projects::ActiveModel> = projects
+                    .into_iter()
+                    .map(|project| webhook_projects::ActiveModel {
+                        webhook_id: Set(webhook.id),
+                        project_id: Set(project),
+                        ..Default::default()
+                    })
+                    .collect();
+
+                webhook_projects::Entity::insert_many(webhook_projects)
+                    .exec(tx)
+                    .await?;
+
+                Ok(())
+            })
+        })
+        .await?;
 
         // get and update endpoint
         let current_endpoint = svix
@@ -222,7 +214,7 @@ impl Mutation {
         let mut active_webhook: webhooks::ActiveModel = webhook.clone().into();
         active_webhook.updated_at = Set(Some(Utc::now().naive_utc()));
 
-        active_webhook.update(db.get()).await?;
+        active_webhook.update(conn).await?;
 
         Ok(EditWebhookPayload {
             webhook: Webhook::new(endpoint, webhook),
