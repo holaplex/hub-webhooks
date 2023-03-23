@@ -6,7 +6,7 @@ use holaplex_hub_webhooks::{
     db::Connection,
     events,
     handlers::{graphql_handler, health, playground},
-    AppState, Args, Services,
+    proto, AppState, Args, Services,
 };
 use hub_core::{
     anyhow::Context as AnyhowContext,
@@ -30,8 +30,9 @@ pub fn main() {
 
             let schema = build_schema();
             let svix_client = svix.build_client().await?;
+            let producer = common.producer_cfg.build::<proto::WebhookEvents>().await?;
 
-            let state = AppState::new(schema, connection.clone(), svix_client.clone());
+            let state = AppState::new(schema, connection.clone(), svix_client.clone(), producer);
 
             let cons = common.consumer_cfg.build::<Services>().await?;
 

@@ -26,6 +26,7 @@ use hub_core::{
     clap,
     consumer::RecvError,
     prelude::*,
+    producer::Producer,
     tokio,
     uuid::Uuid,
 };
@@ -39,6 +40,13 @@ pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/organization.proto.rs"));
     include!(concat!(env!("OUT_DIR"), "/customer.proto.rs"));
     include!(concat!(env!("OUT_DIR"), "/treasury.proto.rs"));
+    include!(concat!(env!("OUT_DIR"), "/webhook.proto.rs"));
+}
+
+use proto::WebhookEvents;
+
+impl hub_core::producer::Message for proto::WebhookEvents {
+    type Key = proto::WebhookEventKey;
 }
 
 #[derive(Debug)]
@@ -128,15 +136,22 @@ pub struct AppState {
     pub schema: AppSchema,
     pub connection: Connection,
     pub svix_client: Svix,
+    pub producer: Producer<WebhookEvents>,
 }
 
 impl AppState {
     #[must_use]
-    pub fn new(schema: AppSchema, connection: Connection, svix_client: Svix) -> Self {
+    pub fn new(
+        schema: AppSchema,
+        connection: Connection,
+        svix_client: Svix,
+        producer: Producer<WebhookEvents>,
+    ) -> Self {
         Self {
             schema,
             connection,
             svix_client,
+            producer,
         }
     }
 }
