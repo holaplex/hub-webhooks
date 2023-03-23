@@ -37,8 +37,9 @@ impl Webhook {
         filter_types
             .unwrap_or_default()
             .into_iter()
-            .map(|v| v.parse().unwrap())
-            .collect()
+            .map(|v| v.parse())
+            .collect::<Result<Vec<FilterType>, _>>()
+            .unwrap_or_default()
     }
 
     async fn description(&self) -> String {

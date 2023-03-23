@@ -275,7 +275,7 @@ impl std::str::FromStr for FilterType {
             "PROJECT_WALLET_CREATED" => Ok(FilterType::ProjectWalletCreated),
             "DROP_CREATED" => Ok(FilterType::DropCreated),
             "DROP_MINTED" => Ok(FilterType::DropMinted),
-            _ => Err(format!("'{}' is not a valid value for FilterType", s)),
+            _ => Err(format!("'{s}' is not a valid value for FilterType")),
         }
     }
 }
