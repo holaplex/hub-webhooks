@@ -1,4 +1,4 @@
-use async_graphql::Object;
+use async_graphql::{Object, Result};
 use hub_core::{chrono::NaiveDateTime, uuid::Uuid};
 use svix::api::EndpointOut;
 
@@ -31,7 +31,7 @@ impl Webhook {
         &self.endpoint.url
     }
 
-    async fn events(&self) -> Vec<FilterType> {
+    async fn events(&self) -> Result<Vec<FilterType>> {
         let filter_types = self.endpoint.filter_types.clone();
 
         filter_types
@@ -39,7 +39,7 @@ impl Webhook {
             .into_iter()
             .map(|v| v.parse())
             .collect::<Result<Vec<FilterType>, _>>()
-            .unwrap_or_default()
+            .map_err(Into::into)
     }
 
     async fn description(&self) -> String {
