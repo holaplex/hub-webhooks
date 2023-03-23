@@ -263,6 +263,23 @@ impl FilterType {
     }
 }
 
+impl std::str::FromStr for FilterType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "PROJECT_CREATED" => Ok(FilterType::ProjectCreated),
+            "CUSTOMER_CREATED" => Ok(FilterType::CustomerCreated),
+            "CUSTOMER_TREASURY_CREATED" => Ok(FilterType::CustomerTreasuryCreated),
+            "CUSTOMER_WALLET_CREATED" => Ok(FilterType::CustomerWalletCreated),
+            "PROJECT_WALLET_CREATED" => Ok(FilterType::ProjectWalletCreated),
+            "DROP_CREATED" => Ok(FilterType::DropCreated),
+            "DROP_MINTED" => Ok(FilterType::DropMinted),
+            _ => Err(format!("'{}' is not a valid value for FilterType", s)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, InputObject)]
 pub struct DeleteWebhookInput {
     pub webhook: Uuid,
