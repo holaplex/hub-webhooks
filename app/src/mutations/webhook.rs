@@ -283,13 +283,13 @@ impl std::str::FromStr for FilterType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "PROJECT_CREATED" => Ok(FilterType::ProjectCreated),
-            "CUSTOMER_CREATED" => Ok(FilterType::CustomerCreated),
-            "CUSTOMER_TREASURY_CREATED" => Ok(FilterType::CustomerTreasuryCreated),
-            "CUSTOMER_WALLET_CREATED" => Ok(FilterType::CustomerWalletCreated),
-            "PROJECT_WALLET_CREATED" => Ok(FilterType::ProjectWalletCreated),
-            "DROP_CREATED" => Ok(FilterType::DropCreated),
-            "DROP_MINTED" => Ok(FilterType::DropMinted),
+            "project.created" => Ok(FilterType::ProjectCreated),
+            "customer.created" => Ok(FilterType::CustomerCreated),
+            "customer_treasury.created" => Ok(FilterType::CustomerTreasuryCreated),
+            "customer_wallet.created" => Ok(FilterType::CustomerWalletCreated),
+            "project_wallet.created" => Ok(FilterType::ProjectWalletCreated),
+            "drop.created" => Ok(FilterType::DropCreated),
+            "drop.minted" => Ok(FilterType::DropMinted),
             _ => Err(format!("'{s}' is not a valid value for FilterType")),
         }
     }
