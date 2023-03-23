@@ -1,13 +1,14 @@
 use std::ops::Add;
 
 use async_graphql::{self, Context, Enum, Error, InputObject, Object, Result, SimpleObject};
-use hub_core::chrono::Utc;
+use hub_core::{chrono::Utc, producer::Producer};
 use sea_orm::{prelude::*, JoinType, QuerySelect, Set, TransactionTrait};
 use svix::api::{EndpointIn, EndpointUpdate, Svix};
 
 use crate::{
     entities::{organization_applications, webhook_projects, webhooks},
     objects::Webhook,
+    proto::{self, webhook_events::Event, WebhookEventKey, WebhookEvents},
     AppContext,
 };
 
@@ -26,6 +27,7 @@ impl Mutation {
         input: CreateWebhookInput,
     ) -> Result<CreateWebhookPayload> {
         let AppContext { db, user_id, .. } = ctx.data::<AppContext>()?;
+        let producer = ctx.data::<Producer<WebhookEvents>>()?;
         let svix = ctx.data::<Svix>()?;
 
         let user_id = user_id.ok_or_else(|| Error::new("X-USER-ID header not found"))?;
@@ -82,9 +84,22 @@ impl Mutation {
 
         // return the webhook object and endpoint secret
         let graphql_response = CreateWebhookPayload {
-            webhook: Webhook::new(endpoint, webhook),
+            webhook: Webhook::new(endpoint, webhook.clone()),
             secret: endpoint_secret.key,
         };
+
+        let event = WebhookEvents {
+            event: Some(Event::Created(proto::Webhook {
+                organization_id: webhook.organization_id.to_string(),
+                endpoint_id: webhook.endpoint_id.to_string(),
+            })),
+        };
+
+        let key = WebhookEventKey {
+            id: webhook.id.to_string(),
+        };
+
+        producer.send(Some(&event), Some(&key)).await?;
 
         Ok(graphql_response)
     }
