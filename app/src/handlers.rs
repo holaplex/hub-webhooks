@@ -28,7 +28,12 @@ pub async fn graphql_handler(
 
     Ok(state
         .schema
-        .execute(req.0.data(context).data(state.svix_client.clone()))
+        .execute(
+            req.0
+                .data(context)
+                .data(state.svix_client.clone())
+                .data(state.producer.clone()),
+        )
         .await
         .into())
 }
