@@ -97,6 +97,7 @@ impl Mutation {
 
         let key = WebhookEventKey {
             id: webhook.id.to_string(),
+            user_id: user_id.to_string(),
         };
 
         producer.send(Some(&event), Some(&key)).await?;
@@ -113,9 +114,11 @@ impl Mutation {
         ctx: &Context<'_>,
         input: DeleteWebhookInput,
     ) -> Result<DeleteWebhookPayload> {
-        let AppContext { db, .. } = ctx.data::<AppContext>()?;
-
+        let AppContext { db, user_id, .. } = ctx.data::<AppContext>()?;
+        let producer = ctx.data::<Producer<WebhookEvents>>()?;
         let svix = ctx.data::<Svix>()?;
+
+        let user_id = user_id.ok_or_else(|| Error::new("X-USER-ID header not found"))?;
 
         let (webhook, organization_application) = webhooks::Entity::find()
             .join(
@@ -138,7 +141,21 @@ impl Mutation {
             )
             .await?;
 
-        webhook.delete(db.get()).await?;
+        webhook.clone().delete(db.get()).await?;
+
+        let event = WebhookEvents {
+            event: Some(Event::Deleted(proto::Webhook {
+                organization_id: webhook.organization_id.to_string(),
+                endpoint_id: webhook.endpoint_id.to_string(),
+            })),
+        };
+
+        let key = WebhookEventKey {
+            id: webhook.id.to_string(),
+            user_id: user_id.to_string(),
+        };
+
+        producer.send(Some(&event), Some(&key)).await?;
 
         Ok(DeleteWebhookPayload {
             webhook: input.webhook,
