@@ -269,14 +269,22 @@ pub struct CreateWebhookPayload {
     pub secret: String,
 }
 
+/// An enumeration of event types that can be subscribed to by a webhook.
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Enum)]
 pub enum FilterType {
+    /// Event triggered when a new project is created
     ProjectCreated,
+    /// Event triggered when a new customer is created
     CustomerCreated,
+    /// Event triggered when a new customer treasury is created
     CustomerTreasuryCreated,
+    /// Event triggered when a new wallet is created for a project
     ProjectWalletCreated,
+    /// Event triggered when a new wallet is created for a customer
     CustomerWalletCreated,
+    /// Event triggered when a new drop is created
     DropCreated,
+    /// Event triggered when a new drop is minted
     DropMinted,
 }
 
