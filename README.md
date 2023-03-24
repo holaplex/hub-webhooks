@@ -1,6 +1,6 @@
 # Hub Webhooks
 
-Register Hub webhooks and broadcast messages using [Svix](https://svix.com/).
+Hub Webhooks is a convenient service that lets members of an organization subscribe to change events happening within their organization and projects. It works by letting members register an endpoint that will receive a notification whenever a change event occurs. The service subscribes to internal Kafka events and checks which webhooks want to receive a notification of the event based on the project associated with it. Once an event occurs, the service sends a post request to the registered endpoint.
 
 ## Getting Started
 
