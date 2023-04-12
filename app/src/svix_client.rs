@@ -52,7 +52,8 @@ async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
     customer_created_event(svix_client.clone()).await?;
     customer_treasury_created_event(svix_client.clone()).await?;
     customer_wallet_created_event(svix_client.clone()).await?;
-    project_wallet_created_event(svix_client.clone()).await
+    project_wallet_created_event(svix_client.clone()).await?;
+    mint_transfered_event(svix_client).await
 }
 
 async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
@@ -400,6 +401,74 @@ async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
                 description: "A collection minted event created".to_string(),
                 schemas: Some(HashMap::from([(
                     "2".to_string(),
+                    serde_json::to_value(schema).expect("failed to build schema"),
+                )])),
+                archived: Some(false),
+                name: FilterType::DropMinted.format(),
+            },
+            None,
+        )
+        .await?;
+
+    Ok(())
+}
+
+async fn mint_transfered_event(svix_client: Svix) -> Result<(), Error> {
+    let schema = Schema {
+        fields: Fields {
+            title: Some("Mint transfered event".to_string()),
+            description: "A mint was transfered".to_string(),
+            r#type: "object".to_string(),
+            properties: Some(HashMap::from([
+                ("event_type".to_string(), Fields {
+                    description: "Event Type".to_string(),
+                    r#type: "string".to_string(),
+                    title: None,
+                    properties: None,
+                }),
+                ("payload".to_string(), Fields {
+                    description: "Event Payload".to_string(),
+                    r#type: "object".to_string(),
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("project_id".to_string(), Fields {
+                            description: "Project id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("sender".to_string(), Fields {
+                            description: "Sender wallet address".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("recipient".to_string(), Fields {
+                            description: "Recipient wallet address".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                        ("mint_id".to_string(), Fields {
+                            description: "Mint id".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
+                }),
+            ])),
+        },
+        required: vec!["event_type".to_string(), "payload".to_string()],
+    };
+
+    svix_client
+        .event_type()
+        .create(
+            EventTypeIn {
+                description: "A mint transfered event created".to_string(),
+                schemas: Some(HashMap::from([(
+                    "1".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
