@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use hub_core::{clap, reqwest::StatusCode};
 use serde::Serialize;
 use svix::{
-    api::{EventTypeIn, Svix, SvixOptions},
+    api::{EventTypeIn, EventTypeOut, Svix, SvixOptions},
     error::Error,
 };
 
@@ -36,27 +36,35 @@ impl SvixArgs {
 
         let svix_client = Svix::new(svix_auth_token.to_string(), Some(svix_options));
 
-        match create_event_types(svix_client.clone()).await {
-            Ok(_) => (),
-            Err(Error::Http(e)) if e.status == StatusCode::CONFLICT => (),
-            Err(e) => return Err(e),
-        }
+        create_event_types(svix_client.clone()).await?;
 
         Ok(svix_client)
     }
 }
 
-async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
-    drop_created_event(svix_client.clone()).await?;
-    drop_minted_event(svix_client.clone()).await?;
-    customer_created_event(svix_client.clone()).await?;
-    customer_treasury_created_event(svix_client.clone()).await?;
-    customer_wallet_created_event(svix_client.clone()).await?;
-    project_wallet_created_event(svix_client.clone()).await?;
-    mint_transfered_event(svix_client).await
+macro_rules! event {
+    ($event:expr, $svix:expr) => {
+        match $event($svix.clone()).await {
+            Ok(_) => (),
+            Err(Error::Http(e)) if e.status == StatusCode::CONFLICT => (),
+            Err(e) => return Err(e),
+        }
+    };
 }
 
-async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
+async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
+    event!(drop_created_event, svix_client);
+    event!(drop_minted_event, svix_client);
+    event!(customer_created_event, svix_client);
+    event!(customer_treasury_created_event, svix_client);
+    event!(customer_wallet_created_event, svix_client);
+    event!(project_wallet_created_event, svix_client);
+    event!(mint_transfered_event, svix_client);
+
+    Ok(())
+}
+
+async fn customer_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Customer created event".to_string()),
@@ -107,12 +115,10 @@ async fn customer_created_event(svix_client: Svix) -> Result<(), Error> {
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
-async fn customer_treasury_created_event(svix_client: Svix) -> Result<(), Error> {
+async fn customer_treasury_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Customer treasury created event".to_string()),
@@ -169,12 +175,10 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<(), Error>
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
-async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
+async fn customer_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Customer treasury wallet event".to_string()),
@@ -233,12 +237,10 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
-async fn project_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
+async fn project_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Project treasury wallet event".to_string()),
@@ -286,16 +288,14 @@ async fn project_wallet_created_event(svix_client: Svix) -> Result<(), Error> {
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
-                name: FilterType::CustomerWalletCreated.format(),
+                name: FilterType::ProjectWalletCreated.format(),
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
-async fn drop_created_event(svix_client: Svix) -> Result<(), Error> {
+async fn drop_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Drop created".to_string()),
@@ -346,12 +346,10 @@ async fn drop_created_event(svix_client: Svix) -> Result<(), Error> {
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
-async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
+async fn drop_minted_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Drop mint created".to_string()),
@@ -408,12 +406,10 @@ async fn drop_minted_event(svix_client: Svix) -> Result<(), Error> {
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
-async fn mint_transfered_event(svix_client: Svix) -> Result<(), Error> {
+async fn mint_transfered_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
             title: Some("Mint transfered event".to_string()),
@@ -472,13 +468,11 @@ async fn mint_transfered_event(svix_client: Svix) -> Result<(), Error> {
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
-                name: FilterType::DropMinted.format(),
+                name: FilterType::MintTransfered.format(),
             },
             None,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
 #[derive(Serialize)]
