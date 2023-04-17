@@ -47,7 +47,7 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                 )
                 .await
             },
-            None => Ok(()),
+            Some(customer_events::Event::Blocked(_)) | None => Ok(()),
         },
         Services::Treasuries(k, e) => match e.event {
             Some(treasury_events::Event::CustomerTreasuryCreated(customer)) => {
@@ -131,8 +131,27 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
 
                 broadcast(db, svix, mint.project_id, FilterType::DropMinted, payload).await
             },
+            Some(treasury_events::Event::MintTransfered(payload)) => {
+                let event_payload = serde_json::to_value(Event {
+                    event_type: FilterType::MintTransfered.format(),
+                    payload: EventPayload::MintTransfered(MintTransferedPayload {
+                        project_id: payload.project_id.clone(),
+                        sender: payload.sender,
+                        recipient: payload.recipient,
+                        mint_id: k.id,
+                    }),
+                })?;
 
-            None => Ok(()),
+                broadcast(
+                    db,
+                    svix,
+                    payload.project_id,
+                    FilterType::MintTransfered,
+                    event_payload,
+                )
+                .await
+            },
+            Some(_) | None => Ok(()),
         },
     }
 }
@@ -223,6 +242,7 @@ pub enum EventPayload {
     ProjectWalletCreated(ProjectWalletCreatedPayload),
     DropCreated(DropCreatedPayload),
     DropMinted(DropMintedPayload),
+    MintTransfered(MintTransferedPayload),
 }
 
 #[derive(Serialize)]
@@ -262,4 +282,12 @@ pub struct DropMintedPayload {
     mint_id: String,
     project_id: String,
     drop_id: String,
+}
+
+#[derive(Serialize)]
+pub struct MintTransferedPayload {
+    project_id: String,
+    sender: String,
+    recipient: String,
+    mint_id: String,
 }

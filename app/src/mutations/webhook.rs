@@ -286,6 +286,8 @@ pub enum FilterType {
     DropCreated,
     /// Event triggered when a new drop is minted
     DropMinted,
+    /// Event triggered when a mint has been successfully transfered
+    MintTransfered,
 }
 
 impl FilterType {
@@ -299,6 +301,7 @@ impl FilterType {
             Self::ProjectWalletCreated => "project_wallet.created".to_string(),
             Self::DropCreated => "drop.created".to_string(),
             Self::DropMinted => "drop.minted".to_string(),
+            Self::MintTransfered => "mint.transfered".to_string(),
         }
     }
 }
@@ -315,6 +318,7 @@ impl std::str::FromStr for FilterType {
             "project_wallet.created" => Ok(FilterType::ProjectWalletCreated),
             "drop.created" => Ok(FilterType::DropCreated),
             "drop.minted" => Ok(FilterType::DropMinted),
+            "mint.transfered" => Ok(FilterType::MintTransfered),
             _ => Err(format!("'{s}' is not a valid value for FilterType")),
         }
     }
