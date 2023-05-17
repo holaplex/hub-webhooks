@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 #![deny(clippy::disallowed_methods, clippy::suspicious, clippy::style)]
 #![warn(clippy::pedantic, clippy::cargo)]
 #![allow(clippy::module_name_repetitions)]
