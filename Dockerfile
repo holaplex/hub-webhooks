@@ -48,6 +48,16 @@ RUN apt-get update -y && \
   rm -rf /var/lib/apt/lists/*
 
 FROM base AS hub-webhooks
+ENV TZ=Etc/UTC
+ENV APP_USER=runner
+
+RUN groupadd $APP_USER \
+    && useradd --uid 10000 -g $APP_USER $APP_USER \
+    && mkdir -p bin
+
+RUN chown -R $APP_USER:$APP_USER bin
+
+USER 10000
 COPY --from=builder-hub-webhooks /app/target/release/holaplex-hub-webhooks /usr/local/bin
 CMD ["/usr/local/bin/holaplex-hub-webhooks"]
 
