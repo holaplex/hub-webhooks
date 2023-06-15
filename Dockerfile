@@ -1,4 +1,6 @@
-FROM lukemathwalker/cargo-chef:0.1.50-rust-buster AS chef
+FROM rust:1.69.0-bullseye as chef
+RUN cargo install cargo-chef --locked
+
 WORKDIR /app
 
 RUN apt-get update -y && \
@@ -14,7 +16,7 @@ RUN apt-get update -y && \
   rm -rf /var/lib/apt/lists/*
 
 FROM chef AS planner
-COPY Cargo.* rust-toolchain.toml ./
+COPY Cargo.* ./
 COPY app app
 COPY migration migration
 RUN cargo chef prepare --recipe-path recipe.json
@@ -25,7 +27,7 @@ COPY --from=planner /app/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
-COPY Cargo.* rust-toolchain.toml ./
+COPY Cargo.* ./
 COPY app app
 COPY migration migration
 
@@ -46,6 +48,16 @@ RUN apt-get update -y && \
   rm -rf /var/lib/apt/lists/*
 
 FROM base AS hub-webhooks
+ENV TZ=Etc/UTC
+ENV APP_USER=runner
+
+RUN groupadd $APP_USER \
+    && useradd --uid 10000 -g $APP_USER $APP_USER \
+    && mkdir -p bin
+
+RUN chown -R $APP_USER:$APP_USER bin
+
+USER 10000
 COPY --from=builder-hub-webhooks /app/target/release/holaplex-hub-webhooks /usr/local/bin
 CMD ["/usr/local/bin/holaplex-hub-webhooks"]
 
