@@ -40,6 +40,7 @@ pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/customer.proto.rs"));
     include!(concat!(env!("OUT_DIR"), "/treasury.proto.rs"));
     include!(concat!(env!("OUT_DIR"), "/webhook.proto.rs"));
+    include!(concat!(env!("OUT_DIR"), "/nfts.proto.rs"));
 }
 
 use proto::WebhookEvents;
@@ -53,11 +54,11 @@ pub enum Services {
     Organizations(proto::OrganizationEventKey, proto::OrganizationEvents),
     Customers(proto::CustomerEventKey, proto::CustomerEvents),
     Treasuries(proto::TreasuryEventKey, proto::TreasuryEvents),
+    Nfts(proto::NftEventKey, proto::NftEvents),
 }
 
 impl hub_core::consumer::MessageGroup for Services {
-    const REQUESTED_TOPICS: &'static [&'static str] =
-        &["hub-orgs", "hub-customers", "hub-treasuries"];
+    const REQUESTED_TOPICS: &'static [&'static str] = &["hub-orgs", "hub-customers", "hub-nfts"];
 
     fn from_message<M: hub_core::consumer::Message>(msg: &M) -> Result<Self, RecvError> {
         let topic = msg.topic();
@@ -83,6 +84,12 @@ impl hub_core::consumer::MessageGroup for Services {
                 let val = proto::TreasuryEvents::decode(val)?;
 
                 Ok(Services::Treasuries(key, val))
+            },
+            "hub-nfts" => {
+                let key = proto::NftEventKey::decode(key)?;
+                let val = proto::NftEvents::decode(val)?;
+
+                Ok(Services::Nfts(key, val))
             },
             t => Err(RecvError::BadTopic(t.into())),
         }
