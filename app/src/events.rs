@@ -9,7 +9,8 @@ use crate::{
     entities::{organization_applications, webhook_projects, webhooks},
     mutations::webhook::FilterType,
     proto::{
-        customer_events, organization_events, treasury_events, Organization, OrganizationEventKey,
+        customer_events, nft_events, organization_events, treasury_events, CreationStatus,
+        Organization, OrganizationEventKey,
     },
     Services,
 };
@@ -48,6 +49,40 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                 .await
             },
             Some(customer_events::Event::Blocked(_)) | None => Ok(()),
+        },
+        Services::Nfts(k, e) => match e.event {
+            Some(nft_events::Event::DropCreated(drop_creation)) => {
+                let creation_status = CreationStatus::from_i32(drop_creation.status)
+                    .context("no creation status on the message")?;
+
+                let payload = serde_json::to_value(Event {
+                    event_type: FilterType::DropCreated.format(),
+                    payload: EventPayload::DropCreated(DropCreatedPayload {
+                        project_id: k.project_id.clone(),
+                        drop_id: k.id,
+                        creation_status: creation_status.as_str_name().to_string(),
+                    }),
+                })?;
+
+                broadcast(db, svix, k.project_id, FilterType::DropCreated, payload).await
+            },
+            Some(nft_events::Event::DropMinted(mint_creation)) => {
+                let creation_status = CreationStatus::from_i32(mint_creation.status)
+                    .context("no creation status on the message")?;
+
+                let payload = serde_json::to_value(Event {
+                    event_type: FilterType::DropMinted.format(),
+                    payload: EventPayload::DropMinted(DropMintedPayload {
+                        project_id: k.project_id.clone(),
+                        drop_id: mint_creation.drop_id,
+                        mint_id: k.id,
+                        creation_status: creation_status.as_str_name().to_string(),
+                    }),
+                })?;
+
+                broadcast(db, svix, k.project_id, FilterType::DropMinted, payload).await
+            },
+            Some(_) | None => Ok(()),
         },
         Services::Treasuries(k, e) => match e.event {
             Some(treasury_events::Event::CustomerTreasuryCreated(customer)) => {
@@ -107,29 +142,6 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
                     payload,
                 )
                 .await
-            },
-            Some(treasury_events::Event::DropCreated(drop)) => {
-                let payload = serde_json::to_value(Event {
-                    event_type: FilterType::DropCreated.format(),
-                    payload: EventPayload::DropCreated(DropCreatedPayload {
-                        project_id: drop.project_id.clone(),
-                        drop_id: k.id,
-                    }),
-                })?;
-
-                broadcast(db, svix, drop.project_id, FilterType::DropCreated, payload).await
-            },
-            Some(treasury_events::Event::DropMinted(mint)) => {
-                let payload = serde_json::to_value(Event {
-                    event_type: FilterType::DropMinted.format(),
-                    payload: EventPayload::DropMinted(DropMintedPayload {
-                        project_id: mint.project_id.clone(),
-                        drop_id: mint.drop_id,
-                        mint_id: k.id,
-                    }),
-                })?;
-
-                broadcast(db, svix, mint.project_id, FilterType::DropMinted, payload).await
             },
             Some(treasury_events::Event::MintTransfered(payload)) => {
                 let event_payload = serde_json::to_value(Event {
@@ -275,6 +287,7 @@ pub struct ProjectWalletCreatedPayload {
 pub struct DropCreatedPayload {
     drop_id: String,
     project_id: String,
+    creation_status: String,
 }
 
 #[derive(Serialize)]
@@ -282,6 +295,7 @@ pub struct DropMintedPayload {
     mint_id: String,
     project_id: String,
     drop_id: String,
+    creation_status: String,
 }
 
 #[derive(Serialize)]
