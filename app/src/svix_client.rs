@@ -325,6 +325,12 @@ async fn drop_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
                             title: None,
                             properties: None,
                         }),
+                        ("creation_status".to_string(), Fields {
+                            description: "The status of the drop's creation".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
                     ])),
                 }),
             ])),
@@ -338,7 +344,7 @@ async fn drop_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
             EventTypeIn {
                 description: "A drop was created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "2".to_string(),
+                    "3".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -385,6 +391,12 @@ async fn drop_minted_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
                             title: None,
                             properties: None,
                         }),
+                        ("creation_status".to_string(), Fields {
+                            description: "The status of the mint creation".to_string(),
+                            r#type: "string".to_string(),
+                            title: None,
+                            properties: None,
+                        }),
                     ])),
                 }),
             ])),
@@ -398,7 +410,7 @@ async fn drop_minted_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
             EventTypeIn {
                 description: "A collection minted event created".to_string(),
                 schemas: Some(HashMap::from([(
-                    "2".to_string(),
+                    "3".to_string(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
