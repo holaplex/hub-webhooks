@@ -82,6 +82,52 @@ pub async fn process(msg: Services, db: Connection, svix: Svix) -> Result<()> {
 
                 broadcast(db, svix, k.project_id, FilterType::DropMinted, payload).await
             },
+            Some(nft_events::Event::MintedToCollection(payload)) => {
+                let creation_status = CreationStatus::from_i32(payload.status)
+                    .context("no creation status on the message")?;
+
+                let payload = serde_json::to_value(Event {
+                    event_type: FilterType::MintedToCollection.format(),
+                    payload: EventPayload::MintedToCollection(MintedToCollectionPayload {
+                        mint_id: k.id,
+                        collection_id: payload.collection_id,
+                        project_id: k.project_id.clone(),
+                        status: creation_status.as_str_name().to_string(),
+                    }),
+                })?;
+
+                broadcast(
+                    db,
+                    svix,
+                    k.project_id,
+                    FilterType::MintedToCollection,
+                    payload,
+                )
+                .await
+            },
+
+            Some(nft_events::Event::CollectionCreated(payload)) => {
+                let creation_status = CreationStatus::from_i32(payload.status)
+                    .context("no creation status on the message")?;
+
+                let payload = serde_json::to_value(Event {
+                    event_type: FilterType::CollectionCreated.format(),
+                    payload: EventPayload::CollectionCreated(CollectionCreatedPayload {
+                        collection_id: k.id,
+                        project_id: k.project_id.clone(),
+                        status: creation_status.as_str_name().to_string(),
+                    }),
+                })?;
+
+                broadcast(
+                    db,
+                    svix,
+                    k.project_id,
+                    FilterType::CollectionCreated,
+                    payload,
+                )
+                .await
+            },
             Some(_) | None => Ok(()),
         },
         Services::Treasuries(k, e) => match e.event {
@@ -255,6 +301,23 @@ pub enum EventPayload {
     DropCreated(DropCreatedPayload),
     DropMinted(DropMintedPayload),
     MintTransfered(MintTransferedPayload),
+    CollectionCreated(CollectionCreatedPayload),
+    MintedToCollection(MintedToCollectionPayload),
+}
+
+#[derive(Serialize)]
+pub struct CollectionCreatedPayload {
+    collection_id: String,
+    project_id: String,
+    status: String,
+}
+
+#[derive(Serialize)]
+pub struct MintedToCollectionPayload {
+    mint_id: String,
+    collection_id: String,
+    project_id: String,
+    status: String,
 }
 
 #[derive(Serialize)]
