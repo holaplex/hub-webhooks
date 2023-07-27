@@ -31,10 +31,10 @@ impl SvixArgs {
 
         let svix_options = SvixOptions {
             debug: true,
-            server_url: Some(svix_base_url.to_string()),
+            server_url: Some(svix_base_url.into()),
         };
 
-        let svix_client = Svix::new(svix_auth_token.to_string(), Some(svix_options));
+        let svix_client = Svix::new(svix_auth_token.into(), Some(svix_options));
 
         create_event_types(svix_client.clone()).await?;
 
@@ -53,44 +53,45 @@ macro_rules! event {
 }
 
 async fn create_event_types(svix_client: Svix) -> Result<(), Error> {
-    event!(drop_created_event, svix_client);
-    event!(drop_minted_event, svix_client);
-    event!(customer_created_event, svix_client);
-    event!(customer_treasury_created_event, svix_client);
-    event!(customer_wallet_created_event, svix_client);
-    event!(project_wallet_created_event, svix_client);
-    event!(mint_transfered_event, svix_client);
-
+    event!(drop_created, svix_client);
+    event!(drop_minted, svix_client);
+    event!(customer_created, svix_client);
+    event!(customer_treasury_created, svix_client);
+    event!(customer_wallet_created, svix_client);
+    event!(project_wallet_created, svix_client);
+    event!(mint_transfered, svix_client);
+    event!(minted_to_collection, svix_client);
+    event!(collection_created, svix_client);
     Ok(())
 }
 
-async fn customer_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn customer_created(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Customer created event".to_string()),
-            description: "Customer was created in hub-customers service".to_string(),
-            r#type: "object".to_string(),
+            title: Some("Customer created event"),
+            description: "Customer was created in hub-customers service",
+            r#type: "object",
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("customer_id".to_string(), Fields {
-                            description: "Customer id".to_string(),
-                            r#type: "string".to_string(),
+                        ("customer_id", Fields {
+                            description: "Customer id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -98,16 +99,16 @@ async fn customer_created_event(svix_client: Svix) -> Result<EventTypeOut, Error
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A customer was created".to_string(),
+                description: "A customer was created".into(),
                 schemas: Some(HashMap::from([(
-                    "2".to_string(),
+                    "2".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -118,39 +119,39 @@ async fn customer_created_event(svix_client: Svix) -> Result<EventTypeOut, Error
         .await
 }
 
-async fn customer_treasury_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn customer_treasury_created(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Customer treasury created event".to_string()),
-            description: "Customer treasury was created in hub-treasuries service".to_string(),
-            r#type: "object".to_string(),
+            title: Some("Customer treasury created event"),
+            description: "Customer treasury was created in hub-treasuries service",
+            r#type: "object",
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("customer_id".to_string(), Fields {
-                            description: "Customer id".to_string(),
-                            r#type: "string".to_string(),
+                        ("customer_id", Fields {
+                            description: "Customer id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("treasury_id".to_string(), Fields {
-                            description: "Treasury id".to_string(),
-                            r#type: "string".to_string(),
+                        ("treasury_id", Fields {
+                            description: "Treasury id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -158,16 +159,16 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<EventTypeO
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A customer treasury was created".to_string(),
+                description: "A customer treasury was created".into(),
                 schemas: Some(HashMap::from([(
-                    "2".to_string(),
+                    "2".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -178,41 +179,40 @@ async fn customer_treasury_created_event(svix_client: Svix) -> Result<EventTypeO
         .await
 }
 
-async fn customer_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn customer_wallet_created(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Customer treasury wallet event".to_string()),
-            description: "Customer treasury wallet was created in hub-treasuries service"
-                .to_string(),
-            r#type: "object".to_string(),
+            title: Some("Customer treasury wallet event"),
+            description: "Customer treasury wallet was created in hub-treasuries service",
+            r#type: "object",
 
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("customer_id".to_string(), Fields {
-                            description: "Customer id".to_string(),
-                            r#type: "string".to_string(),
+                        ("customer_id", Fields {
+                            description: "Customer id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("treasury_id".to_string(), Fields {
-                            description: "Wallet id".to_string(),
-                            r#type: "string".to_string(),
+                        ("treasury_id", Fields {
+                            description: "Wallet id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -220,16 +220,16 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A customer treasury wallet was created".to_string(),
+                description: "A customer treasury wallet was created".into(),
                 schemas: Some(HashMap::from([(
-                    "2".to_string(),
+                    "2".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -240,34 +240,33 @@ async fn customer_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut
         .await
 }
 
-async fn project_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn project_wallet_created(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Project treasury wallet event".to_string()),
-            description: "Project treasury wallet was created in hub-treasuries service"
-                .to_string(),
-            r#type: "object".to_string(),
+            title: Some("Project treasury wallet event"),
+            description: "Project treasury wallet was created in hub-treasuries service",
+            r#type: "object",
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("treasury_id".to_string(), Fields {
-                            description: "Wallet id".to_string(),
-                            r#type: "string".to_string(),
+                        ("treasury_id", Fields {
+                            description: "Wallet id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -275,16 +274,16 @@ async fn project_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut,
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A project treasury wallet was created".to_string(),
+                description: "A project treasury wallet was created".into(),
                 schemas: Some(HashMap::from([(
-                    "2".to_string(),
+                    "2".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -295,39 +294,39 @@ async fn project_wallet_created_event(svix_client: Svix) -> Result<EventTypeOut,
         .await
 }
 
-async fn drop_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn drop_created(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Drop created".to_string()),
-            description: "A Drop was created in hub-nfts service".to_string(),
-            r#type: "object".to_string(),
+            title: Some("Drop created"),
+            description: "A Drop was created in hub-nfts service",
+            r#type: "object",
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("drop_id".to_string(), Fields {
-                            description: "Drop id".to_string(),
-                            r#type: "string".to_string(),
+                        ("drop_id", Fields {
+                            description: "Drop id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("creation_status".to_string(), Fields {
-                            description: "The status of the drop's creation".to_string(),
-                            r#type: "string".to_string(),
+                        ("creation_status", Fields {
+                            description: "The status of the drop's creation",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -335,16 +334,16 @@ async fn drop_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A drop was created".to_string(),
+                description: "A drop was created".into(),
                 schemas: Some(HashMap::from([(
-                    "3".to_string(),
+                    "3".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -355,45 +354,45 @@ async fn drop_created_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
         .await
 }
 
-async fn drop_minted_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn drop_minted(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Drop mint created".to_string()),
-            description: "A collection was minted in hub-nfts service".to_string(),
-            r#type: "object".to_string(),
+            title: Some("Drop mint created"),
+            description: "A collection was minted in hub-nfts service",
+            r#type: "object",
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("drop_id".to_string(), Fields {
-                            description: "Drop id".to_string(),
-                            r#type: "string".to_string(),
+                        ("drop_id", Fields {
+                            description: "Drop id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("mint_id".to_string(), Fields {
-                            description: "Mint id".to_string(),
-                            r#type: "string".to_string(),
+                        ("mint_id", Fields {
+                            description: "Mint id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("creation_status".to_string(), Fields {
-                            description: "The status of the mint creation".to_string(),
-                            r#type: "string".to_string(),
+                        ("creation_status", Fields {
+                            description: "The status of the mint creation",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -401,16 +400,16 @@ async fn drop_minted_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A collection minted event created".to_string(),
+                description: "A collection minted event created".into(),
                 schemas: Some(HashMap::from([(
-                    "3".to_string(),
+                    "3".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -421,45 +420,45 @@ async fn drop_minted_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
         .await
 }
 
-async fn mint_transfered_event(svix_client: Svix) -> Result<EventTypeOut, Error> {
+async fn mint_transfered(svix_client: Svix) -> Result<EventTypeOut, Error> {
     let schema = Schema {
         fields: Fields {
-            title: Some("Mint transfered event".to_string()),
-            description: "A mint was transfered".to_string(),
-            r#type: "object".to_string(),
+            title: Some("Mint transfered event"),
+            description: "A mint was transfered",
+            r#type: "object",
             properties: Some(HashMap::from([
-                ("event_type".to_string(), Fields {
-                    description: "Event Type".to_string(),
-                    r#type: "string".to_string(),
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
                     title: None,
                     properties: None,
                 }),
-                ("payload".to_string(), Fields {
-                    description: "Event Payload".to_string(),
-                    r#type: "object".to_string(),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
                     title: None,
                     properties: Some(HashMap::from([
-                        ("project_id".to_string(), Fields {
-                            description: "Project id".to_string(),
-                            r#type: "string".to_string(),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("sender".to_string(), Fields {
-                            description: "Sender wallet address".to_string(),
-                            r#type: "string".to_string(),
+                        ("sender", Fields {
+                            description: "Sender wallet address",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("recipient".to_string(), Fields {
-                            description: "Recipient wallet address".to_string(),
-                            r#type: "string".to_string(),
+                        ("recipient", Fields {
+                            description: "Recipient wallet address",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
-                        ("mint_id".to_string(), Fields {
-                            description: "Mint id".to_string(),
-                            r#type: "string".to_string(),
+                        ("mint_id", Fields {
+                            description: "Mint id",
+                            r#type: "string",
                             title: None,
                             properties: None,
                         }),
@@ -467,16 +466,16 @@ async fn mint_transfered_event(svix_client: Svix) -> Result<EventTypeOut, Error>
                 }),
             ])),
         },
-        required: vec!["event_type".to_string(), "payload".to_string()],
+        required: vec!["event_type", "payload"],
     };
 
     svix_client
         .event_type()
         .create(
             EventTypeIn {
-                description: "A mint transfered event created".to_string(),
+                description: "A mint transfered event created".into(),
                 schemas: Some(HashMap::from([(
-                    "1".to_string(),
+                    "1".into(),
                     serde_json::to_value(schema).expect("failed to build schema"),
                 )])),
                 archived: Some(false),
@@ -487,19 +486,143 @@ async fn mint_transfered_event(svix_client: Svix) -> Result<EventTypeOut, Error>
         .await
 }
 
-#[derive(Serialize)]
-struct Schema {
-    #[serde(flatten)]
-    fields: Fields,
-    required: Vec<String>,
+async fn minted_to_collection(svix: Svix) -> Result<EventTypeOut, Error> {
+    let schema = Schema {
+        fields: Fields {
+            title: Some("Collection Mint creation event"),
+            description: "Status of collection mint creation in hub-nfts service",
+            r#type: "object",
+            properties: Some(HashMap::from([
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
+                    title: None,
+                    properties: None,
+                }),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("mint_id", Fields {
+                            description: "Collection Mint id",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                        ("collection_id", Fields {
+                            description: "Collection id",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                        ("status", Fields {
+                            description: "Collection status",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
+                }),
+            ])),
+        },
+        required: vec!["event_type", "payload"],
+    };
+
+    svix.event_type()
+        .create(
+            EventTypeIn {
+                description: "collection mint creation event".into(),
+                schemas: Some(HashMap::from([(
+                    "1".into(),
+                    serde_json::to_value(schema).expect("failed to build schema"),
+                )])),
+                archived: Some(false),
+                name: FilterType::CollectionCreated.format(),
+            },
+            None,
+        )
+        .await
+}
+
+async fn collection_created(svix: Svix) -> Result<EventTypeOut, Error> {
+    let schema = Schema {
+        fields: Fields {
+            title: Some("Collection creation event"),
+            description: "Status of collection creation in hub-nfts service",
+            r#type: "object",
+            properties: Some(HashMap::from([
+                ("event_type", Fields {
+                    description: "Event Type",
+                    r#type: "string",
+                    title: None,
+                    properties: None,
+                }),
+                ("payload", Fields {
+                    description: "Event Payload",
+                    r#type: "object",
+                    title: None,
+                    properties: Some(HashMap::from([
+                        ("collection_id", Fields {
+                            description: "Collection id",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                        ("project_id", Fields {
+                            description: "Project id",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                        ("status", Fields {
+                            description: "Collection status",
+                            r#type: "string",
+                            title: None,
+                            properties: None,
+                        }),
+                    ])),
+                }),
+            ])),
+        },
+        required: vec!["event_type", "payload"],
+    };
+
+    svix.event_type()
+        .create(
+            EventTypeIn {
+                description: "collection creation event".into(),
+                schemas: Some(HashMap::from([(
+                    "1".into(),
+                    serde_json::to_value(schema).expect("failed to build schema"),
+                )])),
+                archived: Some(false),
+                name: FilterType::MintedToCollection.format(),
+            },
+            None,
+        )
+        .await
 }
 
 #[derive(Serialize)]
-struct Fields {
+struct Schema<'a> {
+    #[serde(flatten)]
+    fields: Fields<'a>,
+    required: Vec<&'a str>,
+}
+
+#[derive(Serialize)]
+struct Fields<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-    description: String,
-    r#type: String,
+    title: Option<&'a str>,
+    description: &'a str,
+    r#type: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    properties: Option<HashMap<String, Fields>>,
+    properties: Option<HashMap<&'a str, Fields<'a>>>,
 }
