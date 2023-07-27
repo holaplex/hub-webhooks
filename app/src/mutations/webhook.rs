@@ -288,6 +288,10 @@ pub enum FilterType {
     DropMinted,
     /// Event triggered when a mint has been successfully transfered
     MintTransfered,
+    /// Event triggered when a new collection is created
+    CollectionCreated,
+    /// Event triggered when an NFT is minted to a collection
+    MintedToCollection,
 }
 
 impl FilterType {
@@ -302,6 +306,8 @@ impl FilterType {
             Self::DropCreated => "drop.created".to_string(),
             Self::DropMinted => "drop.minted".to_string(),
             Self::MintTransfered => "mint.transfered".to_string(),
+            Self::CollectionCreated => "collection.created".to_string(),
+            Self::MintedToCollection => "collection.minted".to_string(),
         }
     }
 }
@@ -319,6 +325,8 @@ impl std::str::FromStr for FilterType {
             "drop.created" => Ok(FilterType::DropCreated),
             "drop.minted" => Ok(FilterType::DropMinted),
             "mint.transfered" => Ok(FilterType::MintTransfered),
+            "collection.created" => Ok(FilterType::CollectionCreated),
+            "collection.minted" => Ok(FilterType::MintedToCollection),
             _ => Err(format!("'{s}' is not a valid value for FilterType")),
         }
     }
