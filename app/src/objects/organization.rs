@@ -1,4 +1,4 @@
-use async_graphql::{ComplexObject, Context, Result, SimpleObject};
+use async_graphql::{ComplexObject, Context, Error, Result, SimpleObject};
 use hub_core::uuid::Uuid;
 
 use crate::{objects::Webhook, AppContext};
@@ -51,6 +51,19 @@ impl Organization {
     pub async fn webhook(&self, ctx: &Context<'_>, id: Uuid) -> Result<Option<Webhook>> {
         let AppContext { webhook_loader, .. } = ctx.data::<AppContext>()?;
 
-        webhook_loader.load_one(id).await
+        let webhook = webhook_loader.load_one(id).await?;
+
+        if let Some(webhook) = webhook {
+            if webhook.model.organization_id == self.id {
+                return Ok(Some(webhook));
+            }
+
+            return Err(Error::new(format!(
+                "Webhook {} does not belong to organization {}",
+                id, self.id
+            )));
+        }
+
+        Ok(None)
     }
 }
